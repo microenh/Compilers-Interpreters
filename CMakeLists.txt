@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.12)
 
+project(CompInterp)
+
+# chapter 1
+
 add_executable(list
   list.c
 )
+
+# chapter 2
 
 add_executable(token1
   token1.c
@@ -19,6 +25,8 @@ add_executable(compact
   scanner.c 
   error.c
 )
+
+# chapter 3
 
 add_executable(xref
   xref.c
@@ -39,4 +47,19 @@ add_executable(uncrunch
   symtab.c 
   scanner.c 
   error.c
+)
+
+# chapter 4
+
+add_executable(postfix
+  postfix.c 
+  scanner.c 
+  error.c
+)
+
+add_executable(calc
+  calc.c 
+  scanner.c 
+  error.c
+  symtab.c
 )
