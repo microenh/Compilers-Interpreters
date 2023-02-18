@@ -19,3 +19,24 @@ add_executable(compact
   scanner.c 
   error.c
 )
+
+add_executable(xref
+  xref.c
+  symtab.c
+  scanner.c
+  error.c
+)
+
+add_executable(crunch
+  crunch.c
+  symtab.c 
+  scanner.c 
+  error.c
+)
+
+add_executable(uncrunch
+  uncrunch.c
+  symtab.c 
+  scanner.c 
+  error.c
+)

@@ -46,8 +46,6 @@ void get_string(void);
 void get_special(void);
 void downshift_word(void);
 void accumulate_value(float *valuep, ERROR_CODE error_code);
-void open_source_file(char *name);
-void close_source_file(void);
 bool get_source_line(void);
 void init_page_header(char *name);
 void print_page_header(void);

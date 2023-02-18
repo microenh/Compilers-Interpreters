@@ -16,7 +16,6 @@
 
 #include "common.h"
 #include <stdbool.h>
-void print_line(char line[]);
 
 /*--------------------------------------------------------------*/
 /*  Token codes							                                    */
@@ -54,5 +53,7 @@ void init_scanner(char *name);
 void print_line(char line[]);
 void quit_scanner(void);
 void get_token(void);
+void close_source_file(void);
+void open_source_file(char *name);
 
 #endif

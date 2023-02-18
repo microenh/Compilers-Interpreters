@@ -1,6 +1,6 @@
 /****************************************************************/
 /*                                                              */
-/*      Program 3-3:  Pascal Source Uncruncher			*/
+/*      Program 3-3:  Pascal Source Uncruncher			            */
 /*                                                              */
 /*      Uncrunch a crunched Pascal source file.                 */
 /*                                                              */
@@ -8,7 +8,7 @@
 /*                                                              */
 /*      USAGE:      uncrunch crunchfile                         */
 /*                                                              */
-/*          crunchfile      file to uncrunch, as created by	*/
+/*          crunchfile      file to uncrunch, as created by	    */
 /*                          the cruncher utility                */
 /*                                                              */
 /*      Copyright (c) 1991 by Ronald Mak                        */
@@ -17,105 +17,108 @@
 /****************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "common.h"
 #include "scanner.h"
 
 #define MAX_OUTPUT_RECORD_LENGTH	80
 
 /*--------------------------------------------------------------*/
-/*  Token classes						*/
+/*  Token classes						                                    */
 /*--------------------------------------------------------------*/
 
 typedef enum {
-    DELIMITER, NONDELIMITER,
+  DELIMITER, NONDELIMITER,
 } TOKEN_CLASS;
 
 /*--------------------------------------------------------------*/
-/*  Globals							*/
+/*  Globals							                                        */
 /*--------------------------------------------------------------*/
 
 FILE *crunch_file;
 char token_string[MAX_TOKEN_STRING_LENGTH];
 char output_record[MAX_OUTPUT_RECORD_LENGTH];
 
-TOKEN_CODE ctoken;              /* current token from crunch file */
-int        record_length;       /* length of output record */
-char       *recp;               /* pointer into output record */
-char       **symtab_strings;    /* array of symtab strings */
+TOKEN_CODE ctoken;        /* current token from crunch file */
+int  record_length;       /* length of output record        */
+char *recp;               /* pointer into output record     */
+char **symtab_strings;    /* array of symtab strings        */
 
 char *symbol_strings[] = {
-    "<no token>", "<IDENTIFIER>", "<NUMBER>", "<STRING>",
-    "^", "*", "(", ")", "-", "+", "=", "[", "]", ":", ";",
-    "<", ">", ",", ".", "/", ":=", "<=", ">=", "<>", "..",
-    "<END OF FILE>", "<ERROR>",
-    "AND", "ARRAY", "BEGIN", "CASE", "CONST", "DIV", "DO", "DOWNTO",
-    "ELSE", "END", "FILE", "FOR", "FUNCTION", "GOTO", "IF", "IN",
-    "LABEL", "MOD", "NIL", "NOT", "OF", "OR", "PACKED", "PROCEDURE",
-    "PROGRAM", "RECORD", "REPEAT", "SET", "THEN", "TO", "TYPE",
-    "UNTIL", "VAR", "WHILE", "WITH",
+  "<no token>", "<IDENTIFIER>", "<NUMBER>", "<STRING>",
+  "^", "*", "(", ")", "-", "+", "=", "[", "]", ":", ";",
+  "<", ">", ",", ".", "/", ":=", "<=", ">=", "<>", "..",
+  "<END OF FILE>", "<ERROR>",
+  "AND", "ARRAY", "BEGIN", "CASE", "CONST", "DIV", "DO", "DOWNTO",
+  "ELSE", "END", "FILE", "FOR", "FUNCTION", "GOTO", "IF", "IN",
+  "LABEL", "MOD", "NIL", "NOT", "OF", "OR", "PACKED", "PROCEDURE",
+  "PROGRAM", "RECORD", "REPEAT", "SET", "THEN", "TO", "TYPE",
+  "UNTIL", "VAR", "WHILE", "WITH",
 };
 
-TOKEN_CLASS token_class();
+TOKEN_CLASS token_class(void);
+void get_ctoken(void);
+void append_blank(void);
+void append_token(void);
+void flush_output_record(void);
+void read_crunched_symtab(void);
 
 /*--------------------------------------------------------------*/
-/*  Main program	Uncrunch a source file.			*/
+/*  Main program	Uncrunch a source file.	                  		*/
 /*--------------------------------------------------------------*/
 
-main(argc, argv)
-
-    int  argc;
-    char *argv[];
-
+int main(int argc, char *argv[])
 {
-    TOKEN_CLASS class;		/* current token class */
-    TOKEN_CLASS prev_class;	/* previous token class */
-    
-    /*
-    --  Open the crunch file.
-    */
-    crunch_file = fopen(argv[1], "rb");
-    if (crunch_file == NULL) {
-	printf("*** Error: Failed to open crunch file.\n");
-	exit(-2);
-    }
+  TOKEN_CLASS class;		/* current token class */
+  TOKEN_CLASS prev_class;	/* previous token class */
+  
+  /*
+  --  Open the crunch file.
+  */
+  crunch_file = fopen(argv[1], "rb");
+  if (crunch_file == NULL) {
+    printf("*** Error: Failed to open crunch file.\n");
+    exit(-2);
+  }
+
+  /*
+  --  Initialize the uncruncher.
+  */
+  prev_class = DELIMITER;
+  recp  = output_record;
+  *recp = '\0';
+  record_length = 0;
+
+  /*
+  --  Read the crunched symbol table.
+  */
+  read_crunched_symtab();
+
+  /*
+  --  Repeatedly process tokens until a period
+  --  or the end of file.
+  */
+  do {
+  	get_ctoken();
+	  if (ctoken == END_OF_FILE) break;
+	  class = token_class();
 
     /*
-    --  Initialize the uncruncher.
+    	--  Append a blank only if two adjacent nondelimiters.
+	    --  Then append the token string.
     */
-    prev_class = DELIMITER;
-    recp  = output_record;
-    *recp = '\0';
-    record_length = 0;
-
-    /*
-    --  Read the crunched symbol table.
-    */
-    read_crunched_symtab();
-
-    /*
-    --  Repeatedly process tokens until a period
-    --  or the end of file.
-    */
-    do {
-	get_ctoken();
-	if (ctoken == END_OF_FILE) break;
-	class = token_class();
-
-        /*
-	--  Append a blank only if two adjacent nondelimiters.
-	--  Then append the token string.
-        */
-	if ((prev_class == NONDELIMITER) && (class == NONDELIMITER))
+  	if ((prev_class == NONDELIMITER) && (class == NONDELIMITER))
 	    append_blank();
-	append_token();
+	  append_token();
 
-	prev_class = class;
-    } while (ctoken != PERIOD);
+	  prev_class = class;
+  } while (ctoken != PERIOD);
 
-    /*
-    --  Flush the last output record if it is partially filled.
-    */
-    if (record_length > 0) flush_output_record();
+  /*
+  --  Flush the last output record if it is partially filled.
+  */
+  if (record_length > 0) flush_output_record();
 }
 
 /*--------------------------------------------------------------*/
@@ -124,31 +127,30 @@ main(argc, argv)
 /*                              strings.                        */
 /*--------------------------------------------------------------*/
 
-read_crunched_symtab()
-
+void read_crunched_symtab(void)
 {
-    short count;	/* number of symtab entries */
-    short index;	/* symtab entry index */
-    char  length;	/* length of name string, incl. '\0' */
+  short count;	/* number of symtab entries */
+  short index;	/* symtab entry index */
+  char  length;	/* length of name string, incl. '\0' */
 
-    /*
-    --  Read the count of symbol table entries and
-    --  allocate that many elements for the array.
-    */
-    fread(&count, sizeof(short), 1, crunch_file);
-    symtab_strings = (char **) alloc_bytes(count*sizeof(char *));
+  /*
+  --  Read the count of symbol table entries and
+  --  allocate that many elements for the array.
+  */
+  fread(&count, sizeof(short), 1, crunch_file);
+  symtab_strings = (char **) alloc_bytes(count*sizeof(char *));
 
-    /*
-    --  Read each symbol table entry (array index, string length,
-    --  and string).  Set the array element.
-    */
-    do {
-	fread(&index, sizeof(short), 1, crunch_file);
-	fread(&length, sizeof(char), 1, crunch_file);
+  /*
+  --  Read each symbol table entry (array index, string length,
+  --  and string).  Set the array element.
+  */
+  do {
+  	fread(&index, sizeof(short), 1, crunch_file);
+  	fread(&length, sizeof(char), 1, crunch_file);
 
-	symtab_strings[index] = alloc_bytes(length);
-	fread(symtab_strings[index], length, 1, crunch_file);
-    } while (--count > 0);
+  	symtab_strings[index] = alloc_bytes(length);
+	  fread(symtab_strings[index], length, 1, crunch_file);
+  } while (--count > 0);
 }
 
 /*--------------------------------------------------------------*/
@@ -158,93 +160,85 @@ read_crunched_symtab()
 /*                      symbol table name strings array or in   */
 /*                      the symbol strings array.               */
 /*--------------------------------------------------------------*/
-
-get_ctoken()
-
+void get_ctoken(void)
 {
-    /*
-    --  Read the crunched token code.
-    */
-    fread(&ctoken, sizeof(char), 1, crunch_file);
-    
-    /*
-    --  Identifier, number, and string tokens:  Look up in the
-    --  symbol table name strings array.  All other tokens:  Look
-    --  up in the symbol strings array.
-    */
-    switch (ctoken) {
+  /*
+  --  Read the crunched token code.
+  */
+  fread(&ctoken, sizeof(char), 1, crunch_file);
+  
+  /*
+  --  Identifier, number, and string tokens:  Look up in the
+  --  symbol table name strings array.  All other tokens:  Look
+  --  up in the symbol strings array.
+  */
+  switch (ctoken) {
+    case IDENTIFIER:
+    case NUMBER:
+    case STRING: {
+      short index;	/* symtab strings index */
 
-	case IDENTIFIER:
-	case NUMBER:
-	case STRING:  {
-	    short index;	/* symtab strings index */
+      fread(&index, sizeof(short), 1, crunch_file);
+      strcpy(token_string, symtab_strings[index]);
+      break;
+    }
 
-	    fread(&index, sizeof(short), 1, crunch_file);
-	    strcpy(token_string, symtab_strings[index]);
-	    break;
-	}
-
-	default:
+    default:
 	    strcpy(token_string, symbol_strings[ctoken]);
 	    break;
-    }
+  }
 }
 
 /*--------------------------------------------------------------*/
 /*  token_class		Return the class of the current token.	*/
 /*--------------------------------------------------------------*/
 
-    TOKEN_CLASS
-token_class()
-
+TOKEN_CLASS token_class(void)
 {
-    /*
-    --  Nondelimiters:  identifiers, numbers, and reserved words
-    --  Delimiters:     strings and special symbols
-    */
-    switch (ctoken) {
-
-	case IDENTIFIER:
-	case NUMBER:
+  /*
+  --  Nondelimiters:  identifiers, numbers, and reserved words
+  --  Delimiters:     strings and special symbols
+  */
+  switch (ctoken) {
+    case IDENTIFIER:
+    case NUMBER:
 	    return(NONDELIMITER);
 
-	default:
+  	default:
 	    return(ctoken < AND ? DELIMITER : NONDELIMITER);
-    }
+  }
 }
 
 /*--------------------------------------------------------------*/
-/*  append_blank	Append a blank to the output record,	*/
-/*			or flush the record if it is full.	*/
+/*  append_blank	Append a blank to the output record,	        */
+/*			or flush the record if it is full.	                    */
 /*--------------------------------------------------------------*/
 
-append_blank()
-
+void append_blank(void)
 {
-    if (++record_length == MAX_OUTPUT_RECORD_LENGTH - 1)
-	flush_output_record();
-    else strcat(output_record, " ");
+  if (++record_length == MAX_OUTPUT_RECORD_LENGTH - 1)
+	  flush_output_record();
+  else
+    strcat(output_record, " ");
 }
 
 /*--------------------------------------------------------------*/
-/*  append_token	Append the token string to the output	*/
-/*			record if it fits.  If not, flush the	*/
-/*			current record and append the string	*/
-/*			to append to the new record.		*/
+/*  append_token	Append the token string to the output	        */
+/*			record if it fits.  If not, flush the	                  */
+/*			current record and append the string	                  */
+/*			to append to the new record.		                        */
 /*--------------------------------------------------------------*/
 
-append_token()
-
+void append_token(void)
 {
-    int token_length;           /* length of token string */
-    
-    token_length = strlen(token_string);
-    if (record_length + token_length
-				>= MAX_OUTPUT_RECORD_LENGTH - 1)
-	flush_output_record();
+  int token_length;           /* length of token string */
+  
+  token_length = strlen(token_string);
+  if (record_length + token_length >= MAX_OUTPUT_RECORD_LENGTH - 1)
+	  flush_output_record();
 
-    strcat(output_record, token_string);
-    record_length += token_length;
+  strcat(output_record, token_string);
+  record_length += token_length;
 }
 
 /*--------------------------------------------------------------*/
@@ -252,11 +246,10 @@ append_token()
 /*				record.				*/
 /*--------------------------------------------------------------*/
 
-flush_output_record()
-
+void flush_output_record(void)
 {
-    printf("%s\n", output_record);
-    recp  = output_record;
-    *recp = '\0';
-    record_length = 0;
+  printf("%s\n", output_record);
+  recp  = output_record;
+  *recp = '\0';
+  record_length = 0;
 }
