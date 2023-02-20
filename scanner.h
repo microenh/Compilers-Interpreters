@@ -55,5 +55,9 @@ void quit_scanner(void);
 void get_token(void);
 void close_source_file(void);
 void open_source_file(char *name);
+bool token_in(TOKEN_CODE token_list[]);
+void synchronize(TOKEN_CODE token_list1[],
+                 TOKEN_CODE token_list2[],
+                 TOKEN_CODE token_list3[]);
 
 #endif

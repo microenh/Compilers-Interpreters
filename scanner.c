@@ -50,7 +50,6 @@ bool get_source_line(void);
 void init_page_header(char *name);
 void print_page_header(void);
 
-
 /*--------------------------------------------------------------*/
 /*  Character codes						                                  */
 /*--------------------------------------------------------------*/
@@ -111,6 +110,20 @@ RW_STRUCT rw_9[] = {
 RW_STRUCT *rw_table[] = {
   NULL, NULL, rw_2, rw_3, rw_4, rw_5, rw_6, rw_7, rw_8, rw_9
 };
+
+/*--------------------------------------------------------------*/
+/*  Token lists                                                 */
+/*--------------------------------------------------------------*/
+
+TOKEN_CODE statement_start_list[]   = {BEGIN, CASE, FOR, IF, REPEAT,
+				                               WHILE, IDENTIFIER, 0};
+
+TOKEN_CODE statement_end_list[]     = {SEMICOLON, END, ELSE, UNTIL,
+				                               END_OF_FILE, 0};
+
+TOKEN_CODE declaration_start_list[] = {CONST, TYPE, VAR, PROCEDURE,
+				                              FUNCTION, 0};
+
 
 /*--------------------------------------------------------------*/
 /*  Globals							                                        */
@@ -614,13 +627,66 @@ void accumulate_value(float *valuep, ERROR_CODE error_code)
 }
 
 
+		/********************************/
+		/*                              */
+		/*      Token testers           */
+		/*                              */
+		/********************************/
+
 /*--------------------------------------------------------------*/
-/*  is_reserved_word	Check to see if a word token is a	*/
-/*			reserved word.  If so, set token	*/
-/*			appropriately and return TRUE.  Else,	*/
-/*			return FALSE.				*/
+/*  token_in            Return TRUE if the current token is in  */
+/*                      the token list, else return FALSE.      */
 /*--------------------------------------------------------------*/
 
+bool token_in(TOKEN_CODE token_list[])
+{
+  TOKEN_CODE *tokenp;
+
+  if (token_list == NULL) return(false);
+
+  for (tokenp = &token_list[0]; *tokenp; ++tokenp) {
+  	if (token == *tokenp) return(true);
+  }
+
+  return(false);
+}
+
+/*--------------------------------------------------------------*/
+/*  synchronize         If the current token is not in one of   */
+/*                      the token lists, flag it as an error.   */
+/*                      Then skip tokens until one that is in   */
+/*                      one of the token lists.                 */
+/*--------------------------------------------------------------*/
+
+void synchronize(TOKEN_CODE token_list1[],
+                 TOKEN_CODE token_list2[],
+                 TOKEN_CODE token_list3[])
+{
+  bool error_flag = (! token_in(token_list1))
+    && (! token_in(token_list2))
+    && (! token_in(token_list3));
+
+  if (error_flag) {
+	  error(token == END_OF_FILE ? UNEXPECTED_END_OF_FILE : UNEXPECTED_TOKEN);
+
+    /*
+    --  Skip tokens to resynchronize.
+    */
+    while ((! token_in(token_list1))
+        && (! token_in(token_list2))
+        && (! token_in(token_list3))
+        && (token != END_OF_FILE))
+      get_token();
+  }
+}
+
+
+/*--------------------------------------------------------------*/
+/*  is_reserved_word	Check to see if a word token is a	        */
+/*			reserved word.  If so, set token	                      */
+/*			appropriately and return TRUE.  Else,	                  */
+/*			return FALSE.				                                    */
+/*--------------------------------------------------------------*/
 bool is_reserved_word(void)
 {
   int word_length = strlen(word_string);

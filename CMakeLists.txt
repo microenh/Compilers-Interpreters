@@ -63,3 +63,12 @@ add_executable(calc
   error.c
   symtab.c
 )
+
+add_executable(syntax1
+  syntax1.c 
+  scanner.c
+  error.c 
+  symtab.c 
+  stmt.c 
+  expr.c
+)
