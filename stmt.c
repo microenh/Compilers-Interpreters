@@ -21,7 +21,6 @@
 #include "scanner.h"
 #include "symtab.h"
 #include "parser.h"
-#include "expr.h"
 
 /*--------------------------------------------------------------*/
 /*  Externals                                                   */

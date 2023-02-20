@@ -24,8 +24,7 @@
 #include "common.h"
 #include "error.h"
 #include "scanner.h"
-#include "stmt.h"
-#include "expr.h"
+#include "parser.h"
 
 /*--------------------------------------------------------------*/
 /*  Externals                                                   */

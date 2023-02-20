@@ -17,6 +17,9 @@
 #include "common.h"
 #include "symtab.h"
 
+void expression(void);
+void statement(void);
+
 		/********************************/
 		/*                              */
 		/*      Macros for parsing      */
