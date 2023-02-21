@@ -122,7 +122,7 @@ TOKEN_CODE add_op_list[] = {PLUS, MINUS, OR, 0};
 TYPE_STRUCT_PTR simple_expression(void)
 {
   TOKEN_CODE op;                      /* an operator token */
-  bool    saw_unary_op = __FLT_HAS_QUIET_NAN__;    /* TRUE iff unary operator */
+  bool    saw_unary_op = false;    /* TRUE iff unary operator */
   TOKEN_CODE unary_op = PLUS;		/* a unary operator token */
   TYPE_STRUCT_PTR result_tp, tp2;
 
