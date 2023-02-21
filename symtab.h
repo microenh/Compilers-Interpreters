@@ -81,30 +81,30 @@ typedef enum {
 } TYPE_FORM;
 
 typedef struct type_struct {
-    TYPE_FORM          form;
-    int                size;
-    struct symtab_node *type_idp;
-    union {
-	struct {
-	    struct symtab_node *const_idp;
-	    int                max;
-	} enumeration;
+  TYPE_FORM          form;
+  int                size;
+  struct symtab_node *type_idp;
+  union {
+    struct {
+      struct symtab_node *const_idp;
+      int                max;
+    } enumeration;
 
-	struct {
-	    struct type_struct *range_typep;
-	    int                min, max;
-	} subrange;
+    struct {
+      struct type_struct *range_typep;
+      int                min, max;
+    } subrange;
 
-	struct {
-	    struct type_struct *index_typep, *elmt_typep;
-	    int                min_index, max_index;
-	    int                elmt_count;
-	} array;
+    struct {
+      struct type_struct *index_typep, *elmt_typep;
+      int                min_index, max_index;
+      int                elmt_count;
+    } array;
 
-	struct {
-	    struct symtab_node *field_symtab;
-	} record;
-    } info;
+    struct {
+      struct symtab_node *field_symtab;
+    } record;
+  } info;
 } TYPE_STRUCT, *TYPE_STRUCT_PTR;
 
 
@@ -125,6 +125,17 @@ typedef struct symtab_node {
   int                level;           /* nesting level        */
   int                label_index;     /* index for code label */
 } SYMTAB_NODE, *SYMTAB_NODE_PTR;
+
+/*--------------------------------------------------------------*/
+/*  Externals                                                   */
+/*--------------------------------------------------------------*/
+
+extern SYMTAB_NODE_PTR  symtab_root;
+
+extern TYPE_STRUCT_PTR  integer_typep, real_typep,
+  boolean_typep, char_typep;
+
+extern TYPE_STRUCT dummy_type;
 
 /*--------------------------------------------------------------*/
 /*  Functions                                                   */

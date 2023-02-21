@@ -1,7 +1,7 @@
 /****************************************************************/
 /*                                                              */
 /*      D E C L A R A T I O N   P A R S E R                     */
-/*								*/
+/*								                                              */
 /*      Parsing routines for delarations.                       */
 /*                                                              */
 /*      FILE:       decl.c                                      */
@@ -25,16 +25,16 @@
 /*  Externals                                                   */
 /*--------------------------------------------------------------*/
 
-extern TOKEN_CODE       token;
-extern char             word_string[];
-extern LITERAL          literal;
+// extern TOKEN_CODE token;
+// extern char word_string[];
+// extern LITERAL literal;
 
-extern SYMTAB_NODE_PTR  symtab_root;
+// extern SYMTAB_NODE_PTR symtab_root;
 
-extern TYPE_STRUCT_PTR  integer_typep, real_typep,
-			boolean_typep, char_typep;
+// extern TYPE_STRUCT_PTR integer_typep, real_typep,
+// 			boolean_typep, char_typep;
 
-extern TYPE_STRUCT      dummy_type;
+// extern TYPE_STRUCT dummy_type;
 
 extern TOKEN_CODE       declaration_start_list[],
 			statement_start_list[];
@@ -149,12 +149,14 @@ void do_const(SYMTAB_NODE_PTR const_idp)          /* constant id */
   */
   if (token == NUMBER) {
   	if (literal.type == INTEGER_LIT) {
-	    const_idp->defn.info.constant.value.integer =	sign == PLUS ?  literal.value.integer
-			     : -literal.value.integer;
+	    const_idp->defn.info.constant.value.integer =	sign == PLUS
+        ?  literal.value.integer
+        : -literal.value.integer;
 	    const_idp->typep = integer_typep;
 	  } else {
-	    const_idp->defn.info.constant.value.real = sign == PLUS ?  literal.value.real
-			     : -literal.value.real;
+	    const_idp->defn.info.constant.value.real = sign == PLUS
+        ?  literal.value.real
+        : -literal.value.real;
 	    const_idp->typep = real_typep;
 	  }
   }
@@ -174,19 +176,21 @@ void do_const(SYMTAB_NODE_PTR const_idp)          /* constant id */
       error(NOT_A_CONSTANT_IDENTIFIER);
 
     else if (idp->typep == integer_typep) {
-      const_idp->defn.info.constant.value.integer = sign == PLUS ?  idp->defn.info.constant.value.integer
-          : -idp->defn.info.constant.value.integer;
+      const_idp->defn.info.constant.value.integer = sign == PLUS
+        ? idp->defn.info.constant.value.integer
+        : -idp->defn.info.constant.value.integer;
       const_idp->typep = integer_typep;
     }
     else if (idp->typep == real_typep) {
-      const_idp->defn.info.constant.value.real = sign == PLUS ?  idp->defn.info.constant.value.real
-          : -idp->defn.info.constant.value.real;
+      const_idp->defn.info.constant.value.real = sign == PLUS
+        ? idp->defn.info.constant.value.real
+        : -idp->defn.info.constant.value.real;
       const_idp->typep = real_typep;
     }
     else if (idp->typep == char_typep) {
       if (saw_sign) error(INVALID_CONSTANT);
 
-      const_idp->defn.info.constant.value.character =  idp->defn.info.constant.value.character;
+      const_idp->defn.info.constant.value.character = idp->defn.info.constant.value.character;
       const_idp->typep = char_typep;
     }
     else if (idp->typep->form == ENUM_FORM) {
@@ -198,8 +202,7 @@ void do_const(SYMTAB_NODE_PTR const_idp)          /* constant id */
     else if (idp->typep->form == ARRAY_FORM) {
         if (saw_sign) error(INVALID_CONSTANT);
 
-        const_idp->defn.info.constant.value.stringp =
-          idp->defn.info.constant.value.stringp;
+        const_idp->defn.info.constant.value.stringp = idp->defn.info.constant.value.stringp;
         const_idp->typep = idp->typep;
     }
   }
@@ -211,17 +214,16 @@ void do_const(SYMTAB_NODE_PTR const_idp)          /* constant id */
     if (saw_sign) error(INVALID_CONSTANT);
 
     if (strlen(literal.value.string) == 1) {
-        const_idp->defn.info.constant.value.character = literal.value.string[0];
-        const_idp->typep = char_typep;
+      const_idp->defn.info.constant.value.character = literal.value.string[0];
+      const_idp->typep = char_typep;
     }
     else {
-        int length = strlen(literal.value.string);
+      int length = strlen(literal.value.string);
 
-        const_idp->defn.info.constant.value.stringp =
-                  alloc_bytes(length + 1);
-        strcpy(const_idp->defn.info.constant.value.stringp,
-        literal.value.string);
-        const_idp->typep = make_string_typep(length);
+      const_idp->defn.info.constant.value.stringp = alloc_bytes(length + 1);
+      strcpy(const_idp->defn.info.constant.value.stringp,
+      literal.value.string);
+      const_idp->typep = make_string_typep(length);
     }
   }
   else {
@@ -262,7 +264,7 @@ void type_definitions(void)
     */
     type_idp->typep = do_type();
     if (type_idp->typep->type_idp == NULL)
-        type_idp->typep->type_idp = type_idp;
+      type_idp->typep->type_idp = type_idp;
 
     analyze_type_defn(type_idp);
 
@@ -304,16 +306,18 @@ TYPE_STRUCT_PTR do_type(void)
       }
 	  }
 
-    case LPAREN:    return(enumeration_type());
-    case ARRAY:     return(array_type());
-    case RECORD:    return(record_type());
+    case LPAREN: return(enumeration_type());
+    case ARRAY: return(array_type());
+    case RECORD: return(record_type());
 
     case PLUS:
     case MINUS:
     case NUMBER:
-    case STRING:    return(subrange_type(NULL));
+    case STRING:
+      return(subrange_type(NULL));
 
-    default:        error(INVALID_TYPE);
+    default:
+      error(INVALID_TYPE);
       return(&dummy_type);
   }
 }
@@ -395,12 +399,14 @@ TYPE_STRUCT_PTR enumeration_type(void)
 /*                      pointer to it.                          */
 /*--------------------------------------------------------------*/
 
-TOKEN_CODE follow_min_limit_list[] = {DOTDOT, IDENTIFIER, PLUS, MINUS,
-				      NUMBER, STRING, SEMICOLON,
-				      END_OF_FILE, 0};
+TOKEN_CODE follow_min_limit_list[] = {
+  DOTDOT, IDENTIFIER, PLUS, MINUS,
+  NUMBER, STRING, SEMICOLON,
+  END_OF_FILE,
+  0
+};
 
-TYPE_STRUCT_PTR subrange_type(
-  SYMTAB_NODE_PTR min_idp)    /* min limit const id */
+TYPE_STRUCT_PTR subrange_type(SYMTAB_NODE_PTR min_idp)    /* min limit const id */
 {
   TYPE_STRUCT_PTR max_typep;  /* type of max limit */
   TYPE_STRUCT_PTR tp = alloc_struct(TYPE_STRUCT);
@@ -418,10 +424,10 @@ TYPE_STRUCT_PTR subrange_type(
   */
   synchronize(follow_min_limit_list, NULL, NULL);
   if_token_get(DOTDOT);
-  else if (token_in(follow_min_limit_list) ||
-      token_in(declaration_start_list) ||
-      token_in(statement_start_list))
-	error(MISSING_DOTDOT);
+  else if (token_in(follow_min_limit_list)
+    || token_in(declaration_start_list)
+    || token_in(statement_start_list))
+	  error(MISSING_DOTDOT);
 
   /*
   --  Maximum constant.
@@ -447,9 +453,11 @@ TYPE_STRUCT_PTR subrange_type(
 /*                      of a subrange type.                     */
 /*--------------------------------------------------------------*/
 
-void get_subrange_limit(SYMTAB_NODE_PTR minmax_idp, /* min const id */
-    int             *minmaxp,   /* where to store min or max value */
-    TYPE_STRUCT_PTR *typepp)    /* where to store ptr to type struct */
+void get_subrange_limit(
+  SYMTAB_NODE_PTR minmax_idp, /* min const id */
+  int             *minmaxp,   /* where to store min or max value */
+  TYPE_STRUCT_PTR *typepp     /* where to store ptr to type struct */
+)
 {
   SYMTAB_NODE_PTR idp      = minmax_idp;
   TOKEN_CODE      sign     = PLUS;    /* unary + or - sign */
@@ -470,8 +478,9 @@ void get_subrange_limit(SYMTAB_NODE_PTR minmax_idp, /* min const id */
   if (token == NUMBER) {
   	if (literal.type == INTEGER_LIT) {
 	    *typepp  = integer_typep;
-	    *minmaxp = (sign == PLUS) ?  literal.value.integer
-				      : -literal.value.integer;
+	    *minmaxp = (sign == PLUS)
+        ?  literal.value.integer
+        : -literal.value.integer;
 	  }
 	  else error(INVALID_SUBRANGE_TYPE);
   }
@@ -593,8 +602,7 @@ TYPE_STRUCT_PTR array_type(void)
           error(INVALID_INDEX_TYPE);
           break;
       }
-	  }
-    else {
+	  } else {
       elmt_tp->form     = NO_FORM;
       elmt_tp->size     = 0;
       elmt_tp->type_idp = NULL;
@@ -619,8 +627,7 @@ TYPE_STRUCT_PTR array_type(void)
   /*
   --  Error synchronization:  Should be OF
   */
-  synchronize(follow_indexes_list,
-  declaration_start_list, statement_start_list);
+  synchronize(follow_indexes_list, declaration_start_list, statement_start_list);
   if_token_get_else_error(OF, MISSING_OF);
 
   /*
@@ -699,8 +706,7 @@ TYPE_STRUCT_PTR make_string_typep(int length) /* string length */
 /*                      size of each dimension.                 */
 /*--------------------------------------------------------------*/
 
-int array_size(
-    TYPE_STRUCT_PTR tp)         /* ptr to array type structure */
+int array_size(TYPE_STRUCT_PTR tp)         /* ptr to array type structure */
 {
   if (tp->info.array.elmt_typep->size == 0)
   	tp->info.array.elmt_typep->size = array_size(tp->info.array.elmt_typep);
@@ -722,8 +728,7 @@ int array_size(
 /*                          <id-list> : <type>                  */
 /*--------------------------------------------------------------*/
 
-void var_declarations(
-  SYMTAB_NODE_PTR rtn_idp)    /* id of program or routine */
+void var_declarations(SYMTAB_NODE_PTR rtn_idp)    /* id of program or routine */
 {
   var_or_field_declarations(rtn_idp, NULL, 0);
 }
@@ -737,20 +742,29 @@ void var_declarations(
 /*                              are then linked together.       */
 /*--------------------------------------------------------------*/
 
-TOKEN_CODE follow_variables_list[] = {SEMICOLON, IDENTIFIER,
-				      END_OF_FILE, 0};
+TOKEN_CODE follow_variables_list[] = {
+  SEMICOLON,
+  IDENTIFIER,
+  END_OF_FILE,
+  0
+};
 
-TOKEN_CODE follow_fields_list[]    = {SEMICOLON, END, IDENTIFIER,
-				      END_OF_FILE, 0};
+TOKEN_CODE follow_fields_list[] = {
+  SEMICOLON,
+  END,
+  IDENTIFIER,
+  END_OF_FILE,
+  0
+};
 
 void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_tp, int offset)
 {
   SYMTAB_NODE_PTR idp, first_idp, last_idp;   /* variable or field ids */
               
-  SYMTAB_NODE_PTR prev_last_idp = NULL;       /* last id of list */
-  TYPE_STRUCT_PTR tp;                         /* type */
-  bool var_flag = (rtn_idp != NULL);       /* TRUE:  variables */
-                                            /* FALSE: fields    */
+  SYMTAB_NODE_PTR prev_last_idp = NULL;       /* last id of list  */
+  TYPE_STRUCT_PTR tp;                         /* type             */
+  bool var_flag = (rtn_idp != NULL);          /* TRUE:  variables */
+                                              /* FALSE: fields    */
   int size;
   int total_size = 0;
 
@@ -767,8 +781,7 @@ void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_t
 	    if (var_flag) {
         search_and_enter_local_symtab(idp);
         idp->defn.key = VAR_DEFN;
-	    }
-	    else {
+	    } else {
         search_and_enter_this_symtab(idp, record_tp->info.record.field_symtab);
         idp->defn.key = FIELD_DEFN;
 	    }
@@ -781,8 +794,7 @@ void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_t
         first_idp = last_idp = idp;
 		    if (var_flag && (rtn_idp->defn.info.routine.locals == NULL))
 		      rtn_idp->defn.info.routine.locals = idp;
-	    }
-	    else {
+	    } else {
 		    last_idp->next = idp;
 		    last_idp = idp;
 	    }
@@ -809,8 +821,7 @@ void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_t
 		    total_size += size;
 		    idp->defn.info.data.offset = offset++;
 		    analyze_var_decl(idp);
-	    }
-	    else   /* record fields */  {
+	    } else { /* record fields */
 		    idp->defn.info.data.offset = offset;
 		    offset += size;
 	    }
@@ -827,9 +838,10 @@ void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_t
     --                          declaration, or ; or END for
     --                          record type definition.
     */
-    synchronize(var_flag ? follow_variables_list
-            : follow_fields_list,
-          declaration_start_list, statement_start_list);
+    synchronize(var_flag
+      ? follow_variables_list
+      : follow_fields_list,
+      declaration_start_list, statement_start_list);
     if_token_get(SEMICOLON);
 	  else if (var_flag && ((token_in(declaration_start_list)) || (token_in(statement_start_list))))
 	    error(MISSING_SEMICOLON);

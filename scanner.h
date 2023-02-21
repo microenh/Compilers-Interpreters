@@ -49,6 +49,14 @@ typedef struct {
   } value;
 } LITERAL;
 
+/*--------------------------------------------------------------*/
+/*  Externals                                                   */
+/*--------------------------------------------------------------*/
+
+extern TOKEN_CODE token;
+extern char word_string[];
+extern LITERAL literal;
+
 void init_scanner(char *name);
 void print_line(char line[]);
 void quit_scanner(void);

@@ -27,12 +27,12 @@
 SYMTAB_NODE_PTR symtab_root = NULL;     /* symbol table root */
 
 TYPE_STRUCT_PTR integer_typep, real_typep,      /* predefined types */
-		boolean_typep, char_typep;
+  boolean_typep, char_typep;
 
 TYPE_STRUCT dummy_type = {      /* for erroneous type definitions */
-    NO_FORM,      /* form */
-    0,            /* size */
-    NULL          /* type_idp */
+  NO_FORM,      /* form */
+  0,            /* size */
+  NULL          /* type_idp */
 };
 
 /*--------------------------------------------------------------*/
@@ -63,7 +63,6 @@ SYMTAB_NODE_PTR search_symtab(
 /*  enter_symtab        Enter a name into the symbol table,     */
 /*                      and return a pointer to the new entry.  */
 /*--------------------------------------------------------------*/
-
 SYMTAB_NODE_PTR enter_symtab(
   char  *name,	          /* name to enter */
   SYMTAB_NODE_PTR *npp)   /* ptr to ptr to symtab root */
@@ -96,11 +95,10 @@ SYMTAB_NODE_PTR enter_symtab(
 }
 
 /*--------------------------------------------------------------*/
-/*  init_symtab		Initialize the symbol table with 	*/
+/*  init_symtab		Initialize the symbol table with 	            */
 /*                      predefined identifiers and types,       */
 /*                      and routines.                           */
 /*--------------------------------------------------------------*/
-
 void init_symtab(void)
 {
   SYMTAB_NODE_PTR integer_idp, real_idp, boolean_idp, char_idp,

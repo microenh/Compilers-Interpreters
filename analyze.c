@@ -37,13 +37,13 @@
 /*  Externals                                                   */
 /*--------------------------------------------------------------*/
 
-extern TYPE_STRUCT_PTR integer_typep, real_typep,
-  boolean_typep, char_typep;
+// extern TYPE_STRUCT_PTR integer_typep, real_typep,
+//   boolean_typep, char_typep;
 
-extern TOKEN_CODE token;
+// extern TOKEN_CODE token;
 extern int line_number, error_count;
 
-extern TYPE_STRUCT dummy_type;
+// extern TYPE_STRUCT dummy_type;
 
 /*--------------------------------------------------------------*/
 /*  Globals                                                     */
@@ -59,15 +59,12 @@ char *form_names[] = {"no form",
   "scalar", "enum", "subrange",
   "array", "record"};
 
-
-
 void analyze_type(TYPE_STRUCT_PTR tp, bool verbose_flag); 
 void analyze_enum_type(TYPE_STRUCT_PTR tp, bool verbose_flag); 
 void analyze_subrange_type(TYPE_STRUCT_PTR tp, bool verbose_flag); 
 void analyze_array_type(TYPE_STRUCT_PTR tp, bool verbose_flag);
 void analyze_record_type(TYPE_STRUCT_PTR tp, bool verbose_flag);
   
-
 /*--------------------------------------------------------------*/
 /*  main		Initialize the scanner and the symbol	              */
 /*			table, and then call the declarations	                  */
@@ -125,6 +122,8 @@ int main(int argc, char *argv[])
   exit(0);
 }
 
+#ifdef analyze
+
 		/************************/
 		/*			                */
 		/*	Analysis	          */
@@ -135,7 +134,6 @@ int main(int argc, char *argv[])
 /*  analyze_const_defn      Analyze a constant definition.      */
 /*--------------------------------------------------------------*/
 
-#ifdef analyze
 void analyze_const_defn(SYMTAB_NODE_PTR idp) /* constant id */
 {
   char *bp;

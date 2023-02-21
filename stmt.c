@@ -26,17 +26,17 @@
 /*  Externals                                                   */
 /*--------------------------------------------------------------*/
 
-extern TOKEN_CODE       token;
-extern char             word_string[];
-extern LITERAL          literal;
+// extern TOKEN_CODE       token;
+// extern char             word_string[];
+// extern LITERAL          literal;
 extern TOKEN_CODE       statement_start_list[], statement_end_list[];
 
-extern SYMTAB_NODE_PTR  symtab_root;
+// extern SYMTAB_NODE_PTR  symtab_root;
 
-extern TYPE_STRUCT_PTR  integer_typep, real_typep,
-			boolean_typep, char_typep;
+// extern TYPE_STRUCT_PTR  integer_typep, real_typep,
+// 			boolean_typep, char_typep;
 
-extern TYPE_STRUCT      dummy_type;
+// extern TYPE_STRUCT      dummy_type;
 
 void assignment_statement(SYMTAB_NODE_PTR var_idp);
 void repeat_statement(void);

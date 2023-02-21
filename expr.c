@@ -24,16 +24,16 @@
 /*  Externals                                                   */
 /*--------------------------------------------------------------*/
 
-extern TOKEN_CODE token;
-extern char word_string[];
-extern LITERAL    literal;
+// extern TOKEN_CODE token;
+// extern char word_string[];
+// extern LITERAL literal;
 
-extern SYMTAB_NODE_PTR  symtab_root;
+// extern SYMTAB_NODE_PTR  symtab_root;
 
-extern TYPE_STRUCT_PTR  integer_typep, real_typep,
-  boolean_typep, char_typep;
+// extern TYPE_STRUCT_PTR  integer_typep, real_typep,
+//   boolean_typep, char_typep;
 
-extern TYPE_STRUCT dummy_type;
+// extern TYPE_STRUCT dummy_type;
 
 TYPE_STRUCT_PTR simple_expression(void);
 TYPE_STRUCT_PTR term(void);
