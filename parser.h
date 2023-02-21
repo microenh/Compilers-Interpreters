@@ -14,11 +14,29 @@
 #ifndef parser_h
 #define parser_h
 
+#include <stdlib.h>
 #include "common.h"
 #include "symtab.h"
 
-void expression(void);
+/*--------------------------------------------------------------*/
+/*  Uses of a variable                                          */
+/*--------------------------------------------------------------*/
+
+typedef enum {
+    EXPR_USE, TARGET_USE, VARPARM_USE,
+} USE;
+
+/*--------------------------------------------------------------*/
+/*  Functions                                                   */
+/*--------------------------------------------------------------*/
+
+TYPE_STRUCT_PTR expression();
+TYPE_STRUCT_PTR variable(SYMTAB_NODE_PTR var_idp,  USE use); 
+TYPE_STRUCT_PTR routine_call();
+TYPE_STRUCT_PTR base_type();
+bool is_assign_type_compatible();
 void statement(void);
+void declarations(SYMTAB_NODE_PTR rtn_idp);
 
 		/********************************/
 		/*                              */
@@ -40,8 +58,30 @@ void statement(void);
 /*--------------------------------------------------------------*/
 
 #define if_token_get_else_error(token_code, error_code)	\
-    if (token == token_code) get_token(); 		\
-    else                     error(error_code)
+    if (token == token_code) get_token(); 		          \
+    else error(error_code)
+
+/*--------------------------------------------------------------*/
+/*  Analysis routine calls      Unless the following statements */
+/*                              are preceded by                 */
+/*                                                              */
+/*                                      #define analyze         */
+/*                                                              */
+/*                              calls to the analysis routines  */
+/*                              are not compiled.               */
+/*--------------------------------------------------------------*/
+
+#ifdef analyze
+void analyze_const_defn(SYMTAB_NODE_PTR idp);
+void analyze_type_defn(SYMTAB_NODE_PTR idp);
+void analyze_var_decl(SYMTAB_NODE_PTR idp);
+#else
+#define analyze_const_defn(idp)
+#define analyze_var_decl(idp)
+#define analyze_type_defn(idp)
+#define analyze_routine_header(idp)
+#define analyze_block(idp)
+#endif
 
 #endif
 

@@ -26,6 +26,15 @@
 
 SYMTAB_NODE_PTR symtab_root = NULL;     /* symbol table root */
 
+TYPE_STRUCT_PTR integer_typep, real_typep,      /* predefined types */
+		boolean_typep, char_typep;
+
+TYPE_STRUCT dummy_type = {      /* for erroneous type definitions */
+    NO_FORM,      /* form */
+    0,            /* size */
+    NULL          /* type_idp */
+};
+
 /*--------------------------------------------------------------*/
 /*  search_symtab       Search for a name in the symbol table.  */
 /*                      Return a pointer of the entry if found, */
@@ -84,4 +93,63 @@ SYMTAB_NODE_PTR enter_symtab(
 
   *npp = new_nodep;                   /* replace */
   return(new_nodep);
+}
+
+/*--------------------------------------------------------------*/
+/*  init_symtab		Initialize the symbol table with 	*/
+/*                      predefined identifiers and types,       */
+/*                      and routines.                           */
+/*--------------------------------------------------------------*/
+
+void init_symtab(void)
+{
+  SYMTAB_NODE_PTR integer_idp, real_idp, boolean_idp, char_idp,
+    false_idp, true_idp;
+
+  enter_name_local_symtab(integer_idp, "integer");
+  enter_name_local_symtab(real_idp,    "real");
+  enter_name_local_symtab(boolean_idp, "boolean");
+  enter_name_local_symtab(char_idp,    "char");
+  enter_name_local_symtab(false_idp,   "false");
+  enter_name_local_symtab(true_idp,    "true");
+
+  integer_typep = alloc_struct(TYPE_STRUCT);
+  real_typep    = alloc_struct(TYPE_STRUCT);
+  boolean_typep = alloc_struct(TYPE_STRUCT);
+  char_typep    = alloc_struct(TYPE_STRUCT);
+
+  integer_idp->defn.key   = TYPE_DEFN;
+  integer_idp->typep      = integer_typep;
+  integer_typep->form     = SCALAR_FORM;
+  integer_typep->size     = sizeof(int);
+  integer_typep->type_idp = integer_idp;
+
+  real_idp->defn.key      = TYPE_DEFN;
+  real_idp->typep         = real_typep;
+  real_typep->form        = SCALAR_FORM;
+  real_typep->size        = sizeof(float);
+  real_typep->type_idp    = real_idp;
+
+  boolean_idp->defn.key   = TYPE_DEFN;
+  boolean_idp->typep      = boolean_typep;
+  boolean_typep->form     = ENUM_FORM;
+  boolean_typep->size     = sizeof(int);
+  boolean_typep->type_idp = boolean_idp;
+
+  boolean_typep->info.enumeration.max = 1;
+  boolean_idp->typep->info.enumeration.const_idp = false_idp;
+  false_idp->defn.key = CONST_DEFN;
+  false_idp->defn.info.constant.value.integer = 0;
+  false_idp->typep = boolean_typep;
+
+  false_idp->next = true_idp;
+  true_idp->defn.key = CONST_DEFN;
+  true_idp->defn.info.constant.value.integer = 1;
+  true_idp->typep = boolean_typep;
+
+  char_idp->defn.key   = TYPE_DEFN;
+  char_idp->typep      = char_typep;
+  char_typep->form     = SCALAR_FORM;
+  char_typep->size     = sizeof(char);
+  char_typep->type_idp = char_idp;
 }

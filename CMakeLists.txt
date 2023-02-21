@@ -72,3 +72,13 @@ add_executable(syntax1
   stmt.c 
   expr.c
 )
+
+add_executable(analyze
+  analyze.c
+  scanner.c
+  error.c 
+  symtab.c 
+  stmt.c 
+  expr.c
+  decl.c
+)
