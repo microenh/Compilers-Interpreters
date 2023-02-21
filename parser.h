@@ -37,6 +37,7 @@ TYPE_STRUCT_PTR base_type();
 bool is_assign_type_compatible();
 void statement(void);
 void declarations(SYMTAB_NODE_PTR rtn_idp);
+void compound_statement(void);
 
 		/********************************/
 		/*                              */

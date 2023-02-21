@@ -46,7 +46,7 @@ void for_statement(void);
 void case_statement(void);
 void case_branch(TYPE_STRUCT_PTR expr_tp);
 TYPE_STRUCT_PTR case_label(void);
-void compound_statement(void);
+
 
 /*--------------------------------------------------------------*/
 /*  statement		Process a statement by calling the	            */
