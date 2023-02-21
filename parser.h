@@ -15,6 +15,7 @@
 #define parser_h
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include "common.h"
 #include "symtab.h"
 
@@ -32,12 +33,16 @@ typedef enum {
 
 TYPE_STRUCT_PTR expression();
 TYPE_STRUCT_PTR variable(SYMTAB_NODE_PTR var_idp,  USE use); 
-TYPE_STRUCT_PTR routine_call();
-TYPE_STRUCT_PTR base_type();
+TYPE_STRUCT_PTR routine_call(SYMTAB_NODE_PTR rtn_idp, bool parm_check_flag);
+TYPE_STRUCT_PTR base_type(TYPE_STRUCT_PTR tp);
+TYPE_STRUCT_PTR standard_routine_call(SYMTAB_NODE_PTR rtn_idp); 
 bool is_assign_type_compatible();
 void statement(void);
 void declarations(SYMTAB_NODE_PTR rtn_idp);
 void compound_statement(void);
+void routine(void);
+void actual_parm_list(SYMTAB_NODE_PTR rtn_idp, bool parm_check_flag);
+void program(void); 
 
 		/********************************/
 		/*                              */

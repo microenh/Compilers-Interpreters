@@ -30,6 +30,8 @@
 // extern LITERAL literal;
 
 // extern SYMTAB_NODE_PTR symtab_root;
+extern SYMTAB_NODE_PTR  symtab_display[];
+extern int              level;
 
 // extern TYPE_STRUCT_PTR integer_typep, real_typep,
 // 			boolean_typep, char_typep;
@@ -62,6 +64,8 @@ void get_subrange_limit(SYMTAB_NODE_PTR minmax_idp, int *minmaxp, TYPE_STRUCT_PT
 /*                      and function definitions.               */
 /*--------------------------------------------------------------*/
 
+TOKEN_CODE follow_routine_list[] = {SEMICOLON, END_OF_FILE, 0};
+
 void declarations(SYMTAB_NODE_PTR rtn_idp)  /* id of program or routine */
 {
   if (token == CONST) {
@@ -78,6 +82,22 @@ void declarations(SYMTAB_NODE_PTR rtn_idp)  /* id of program or routine */
 	  get_token();
 	  var_declarations(rtn_idp);
   }
+
+  /*
+  --  Loop to process routine (procedure and function)
+  --  definitions.
+  */
+  while ((token == PROCEDURE) || (token == FUNCTION)) {
+  	routine();
+
+    /*
+    --  Error synchronization:  Should be ;
+    */
+    synchronize(follow_routine_list, declaration_start_list, statement_start_list);
+    if_token_get(SEMICOLON);
+    else if (token_in(declaration_start_list) || token_in(statement_start_list))
+      error(MISSING_SEMICOLON);
+  }  
 }
 
 		/************************/

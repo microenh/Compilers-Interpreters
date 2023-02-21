@@ -29,6 +29,8 @@
 // extern LITERAL literal;
 
 // extern SYMTAB_NODE_PTR  symtab_root;
+extern SYMTAB_NODE_PTR  symtab_display[];
+extern int              level;
 
 // extern TYPE_STRUCT_PTR  integer_typep, real_typep,
 //   boolean_typep, char_typep;
@@ -306,20 +308,36 @@ TYPE_STRUCT_PTR factor(void)
   TYPE_STRUCT_PTR tp;
 
   switch (token) {
-
     case IDENTIFIER: {
       SYMTAB_NODE_PTR idp;
 
-      search_and_find_all_symtab(idp);
+	    search_and_find_all_symtab(idp);
 
-      if (idp->defn.key == CONST_DEFN) {
-        get_token();
-        tp = idp->typep;
-      } else tp = variable(idp, EXPR_USE);
+	    switch (idp->defn.key) {
+        case FUNC_DEFN:
+            get_token();
+            tp = routine_call(idp, true);
+            break;
 
-      break;
-      }
+        case PROC_DEFN:
+            error(INVALID_IDENTIFIER_USAGE);
+            get_token();
+            actual_parm_list(idp, false);
+            tp = &dummy_type;
+            break;
 
+        case CONST_DEFN:
+            get_token();
+            tp = idp->typep;
+            break;
+
+        default:
+            tp = variable(idp, EXPR_USE);
+            break;
+	    }
+
+	    break;
+    }
     case NUMBER:
       tp = literal.type == INTEGER_LIT
           ? integer_typep
@@ -391,6 +409,16 @@ TYPE_STRUCT_PTR variable(
   }
 
   get_token();
+
+  /*
+  --  There must not be a parameter list, but if there is one,
+  --  parse it anyway for error recovery.
+  */
+  if (token == LPAREN) {
+  	error(UNEXPECTED_TOKEN);
+	  actual_parm_list(var_idp, false);
+	  return(tp);
+  }  
 
   /*
   --  Subscripts and/or field designators?

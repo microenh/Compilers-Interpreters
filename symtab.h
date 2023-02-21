@@ -143,14 +143,28 @@ extern TYPE_STRUCT dummy_type;
 
 void init_symtab(void);
 SYMTAB_NODE_PTR search_symtab(char *name, SYMTAB_NODE_PTR np);
+SYMTAB_NODE_PTR search_symtab_display(char *name);
 SYMTAB_NODE_PTR enter_symtab(char *name, SYMTAB_NODE_PTR *np);
+SYMTAB_NODE_PTR exit_scope(void);
 TYPE_STRUCT_PTR make_string_typep(int length);
+void enter_scope(SYMTAB_NODE_PTR symtab_root);;
 
 	/****************************************/
 	/*                                      */
 	/*      Macros to search symbol tables  */
 	/*                                      */
 	/****************************************/
+
+/*--------------------------------------------------------------*/
+/*  search_local_symtab             Search the local symbol     */
+/*                                  table for the current id    */
+/*                                  name.  Set a pointer to the */
+/*                                  entry if found, else to     */
+/*                                  NULL.                       */
+/*--------------------------------------------------------------*/
+
+#define search_local_symtab(idp)                                \
+    idp = search_symtab(word_string, symtab_display[level])  
 
 /*--------------------------------------------------------------*/
 /*  search_this_symtab              Search the given symbol     */
@@ -164,15 +178,15 @@ TYPE_STRUCT_PTR make_string_typep(int length);
   idp = search_symtab(word_string, this_symtab)
 
 /*--------------------------------------------------------------*/
-/*  search_all_symtab               Search the local symbol     */
-/*                                  table for the current id    */
+/*  search_all_symtab               Search the symbol table     */
+/*                                  display for the current id  */
 /*                                  name.  Set a pointer to the */
 /*                                  entry if found, else to     */
 /*                                  NULL.                       */
 /*--------------------------------------------------------------*/
 
 #define search_all_symtab(idp)                                  \
-  idp = search_symtab(word_string, symtab_root)
+  idp = search_symtab_display(word_string)
 
 /*--------------------------------------------------------------*/
 /*  enter_local_symtab              Enter the current id name   */
@@ -182,7 +196,7 @@ TYPE_STRUCT_PTR make_string_typep(int length);
 /*--------------------------------------------------------------*/
 
 #define enter_local_symtab(idp)                                 \
-  idp = enter_symtab(word_string, &symtab_root)
+  idp = enter_symtab(word_string, &symtab_display[level])
 
 /*--------------------------------------------------------------*/
 /*  enter_name_local_symtab         Enter the given name into   */
@@ -191,23 +205,23 @@ TYPE_STRUCT_PTR make_string_typep(int length);
 /*--------------------------------------------------------------*/
 
 #define enter_name_local_symtab(idp, name)                      \
-  idp = enter_symtab(name, &symtab_root)
+  idp = enter_symtab(name, &symtab_display[level])
 
 /*--------------------------------------------------------------*/
-/*  search_and_find_all_symtab      Search the local symbol     */
-/*                                  table for the current id    */
+/*  search_and_find_all_symtab      Search the symbol table     */
+/*                                  display for the current id  */
 /*                                  name.  If not found, ID     */
 /*                                  UNDEFINED error, and enter  */
 /*                                  into the local symbol table.*/
 /*                                  Set a pointer to the entry. */
 /*--------------------------------------------------------------*/
 
-#define search_and_find_all_symtab(idp)                          \
-  if ((idp = search_symtab(word_string, symtab_root)) == NULL) { \
-  	error(UNDEFINED_IDENTIFIER);                                 \
-	  idp = enter_symtab(word_string, &symtab_root);               \
-	  idp->defn.key = UNDEFINED;                                   \
-	  idp->typep = &dummy_type;                                    \
+#define search_and_find_all_symtab(idp)                     \
+  if ((idp = search_symtab_display(word_string)) == NULL) { \
+	  error(UNDEFINED_IDENTIFIER);                            \
+	  idp = enter_symtab(word_string, &symtab_display[level]);\
+	  idp->defn.key = UNDEFINED;                              \
+	  idp->typep = &dummy_type;                               \
   }
 
 /*--------------------------------------------------------------*/
@@ -219,10 +233,12 @@ TYPE_STRUCT_PTR make_string_typep(int length);
 /*                                  Set a pointer to the entry. */
 /*--------------------------------------------------------------*/
 
-#define search_and_enter_local_symtab(idp)                       \
-  if ((idp = search_symtab(word_string, symtab_root)) == NULL) { \
-  	idp = enter_symtab(word_string, &symtab_root);               \
-  } else error(REDEFINED_IDENTIFIER)
+#define search_and_enter_local_symtab(idp)                   \
+if ((idp = search_symtab(word_string,                        \
+    symtab_display[level])) == NULL) {                       \
+  	idp = enter_symtab(word_string, &symtab_display[level]); \
+  } else                                                     \
+    error(REDEFINED_IDENTIFIER)
 
 /*--------------------------------------------------------------*/
 /*  search_and_enter_this_symtab    Search the given symbol     */

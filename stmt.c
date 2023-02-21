@@ -33,6 +33,9 @@ extern TOKEN_CODE       statement_start_list[], statement_end_list[];
 
 // extern SYMTAB_NODE_PTR  symtab_root;
 
+extern SYMTAB_NODE_PTR  symtab_display[];
+extern int              level;
+
 // extern TYPE_STRUCT_PTR  integer_typep, real_typep,
 // 			boolean_typep, char_typep;
 
@@ -65,10 +68,15 @@ void statement(void)
 	    SYMTAB_NODE_PTR idp;
 
 	    /*
-	    --  Assignment statement.
+	    --  Assignment statement or procedure call?
 	    */
 	    search_and_find_all_symtab(idp);
-	    assignment_statement(idp);
+
+	    if (idp->defn.key == PROC_DEFN) {
+    		get_token();
+		    routine_call(idp, true);
+	    }
+	    else assignment_statement(idp);
 
 	    break;
 	  }
@@ -205,6 +213,9 @@ void for_statement(void)
 
   if (token == IDENTIFIER) {
   	search_and_find_all_symtab(for_idp);
+
+    if ((for_idp->level != level) || (for_idp->defn.key != VAR_DEFN))
+      error(INVALID_FOR_CONTROL);
 
 	  for_tp = base_type(for_idp->typep);
   	get_token();

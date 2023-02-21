@@ -92,3 +92,15 @@ add_executable(syntax2
   expr.c
   decl.c
 )
+
+add_executable(syntax3
+  syntax3.c
+  scanner.c
+  error.c 
+  symtab.c 
+  stmt.c 
+  expr.c
+  decl.c
+  routine.c
+  standard.c 
+)
