@@ -25,6 +25,8 @@
 #define MAX_CODE_BUFFER_SIZE    4096
 #define MAX_NESTING_LEVEL       16
 
+#define analyze
+
   /****************************************/
   /*                                      */
   /*      Macros for memory allocation    */
