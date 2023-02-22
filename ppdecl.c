@@ -38,7 +38,6 @@ bool const_flag, type_flag, var_flag;     /* TRUE if keywords already printed */
 /*--------------------------------------------------------------*/
 /*  Forwards                                                    */
 /*--------------------------------------------------------------*/
-void analyze_routine_header(SYMTAB_NODE_PTR rtn_idp);
 void declaration_keyword(bool *flag,  char *string);
 void analyze_const_defn(SYMTAB_NODE_PTR const_idp);
 void analyze_type_defn(SYMTAB_NODE_PTR type_idp);

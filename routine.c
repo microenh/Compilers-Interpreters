@@ -98,8 +98,7 @@ void program(void)
   /*
   --  Error synchronization:  Should be ;
   */
-  synchronize(follow_header_list,
-  declaration_start_list, statement_start_list);
+  synchronize(follow_header_list, declaration_start_list, statement_start_list);
   if_token_get(SEMICOLON);
   else if (token_in(declaration_start_list) || token_in(statement_start_list))
 	  error(MISSING_SEMICOLON);

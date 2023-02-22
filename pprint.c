@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
   */
   print_flag = false;
   init_scanner(argv[1]);
+  // init_scanner("../translat.pas");
 
   /*
   --  Process a program.

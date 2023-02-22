@@ -19,6 +19,8 @@
 #include "common.h"
 #include "symtab.h"
 
+#define analyze
+
 /*--------------------------------------------------------------*/
 /*  Uses of a variable                                          */
 /*--------------------------------------------------------------*/
@@ -83,6 +85,8 @@ void crunch_token(void);
 void analyze_const_defn(SYMTAB_NODE_PTR idp);
 void analyze_type_defn(SYMTAB_NODE_PTR idp);
 void analyze_var_decl(SYMTAB_NODE_PTR idp);
+void analyze_routine_header(SYMTAB_NODE_PTR rtn_idp);
+void analyze_block(char *code_segment);
 #else
 #define analyze_const_defn(idp)
 #define analyze_var_decl(idp)

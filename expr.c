@@ -345,7 +345,8 @@ TYPE_STRUCT_PTR factor(void)
 	    SYMTAB_NODE_PTR np;
 
 	    np = search_symtab(token_string, symtab_display[1]);
-	    if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+	    if (np == NULL)
+        np = enter_symtab(token_string, &symtab_display[1]);
 
 	    if (literal.type == INTEGER_LIT) {
 		    tp = np->typep = integer_typep;
@@ -365,7 +366,9 @@ TYPE_STRUCT_PTR factor(void)
 	    int length = strlen(literal.value.string);
 
 	    np = search_symtab(token_string, symtab_display[1]);
-	    if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+	    if (np == NULL)
+      np = enter_symtab(token_string, &symtab_display[1]);
+        
 
 	    if (length == 1) {
 		    np->defn.info.constant.value.character = literal.value.string[0];
