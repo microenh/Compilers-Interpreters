@@ -24,6 +24,7 @@
 #include "common.h"
 #include "error.h"
 #include "scanner.h"
+#include "parser.h"
 
 #define EOF_CHAR        '\x7f'
 #define TAB_SIZE        8
@@ -136,6 +137,7 @@ int         buffer_offset;      /* char offset into source buffer */
 int         level = 0;          /* current nesting level */
 int	        line_number = 0;	  /* current line number */
 bool        print_flag = true;  /* TRUE to print source lines */
+bool        block_flag = false; /* TRUE only when parsing a block */
 
 char source_buffer[MAX_SOURCE_LINE_LENGTH]; /* source file buffer */
 char token_string[MAX_TOKEN_STRING_LENGTH]; /* token string */
@@ -301,16 +303,23 @@ void skip_blanks(void)
 
 void get_token(void)
 {
-    skip_blanks();
-    tokenp = token_string;
+  skip_blanks();
+  tokenp = token_string;
 
-    switch (char_code(ch)) {
-      case LETTER:    get_word();             break;
-      case DIGIT:     get_number();           break;
-      case QUOTE:     get_string();           break;
-      case EOF_CODE:  token = END_OF_FILE;    break;
-      default:        get_special();          break;
-    }
+  switch (char_code(ch)) {
+    case LETTER:    get_word();             break;
+    case DIGIT:     get_number();           break;
+    case QUOTE:     get_string();           break;
+    case EOF_CODE:  token = END_OF_FILE;    break;
+    default:        get_special();          break;
+  }
+
+  /*
+  --  For the interpreter:  While parsing a block, crunch
+  --  the token code and append it to the code buffer.
+  */
+  if (block_flag)
+    crunch_token();
 }
 
 /*--------------------------------------------------------------*/

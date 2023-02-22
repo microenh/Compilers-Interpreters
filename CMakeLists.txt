@@ -104,3 +104,17 @@ add_executable(syntax3
   routine.c
   standard.c 
 )
+
+add_executable(pprint
+  pprint.c
+  ppdecl.c
+  ppstmt.c
+  scanner.c
+  error.c 
+  symtab.c 
+  stmt.c 
+  expr.c
+  decl.c
+  routine.c
+  standard.c 
+)

@@ -25,6 +25,7 @@
 /*--------------------------------------------------------------*/
 
 // extern TOKEN_CODE token;
+extern char       token_string[];
 // extern char word_string[];
 // extern LITERAL literal;
 
@@ -315,44 +316,70 @@ TYPE_STRUCT_PTR factor(void)
 
 	    switch (idp->defn.key) {
         case FUNC_DEFN:
-            get_token();
-            tp = routine_call(idp, true);
-            break;
+          crunch_symtab_node_ptr(idp);
+          get_token();
+          tp = routine_call(idp, true);
+          break;
 
         case PROC_DEFN:
-            error(INVALID_IDENTIFIER_USAGE);
-            get_token();
-            actual_parm_list(idp, false);
-            tp = &dummy_type;
-            break;
+          error(INVALID_IDENTIFIER_USAGE);
+          get_token();
+          actual_parm_list(idp, false);
+          tp = &dummy_type;
+          break;
 
         case CONST_DEFN:
-            get_token();
-            tp = idp->typep;
-            break;
+          crunch_symtab_node_ptr(idp);
+          get_token();
+          tp = idp->typep;
+          break;
 
         default:
-            tp = variable(idp, EXPR_USE);
-            break;
+          tp = variable(idp, EXPR_USE);
+          break;
 	    }
 
 	    break;
     }
-    case NUMBER:
-      tp = literal.type == INTEGER_LIT
-          ? integer_typep
-          : real_typep;
-      get_token();
-      break;
+	  case NUMBER: {
+	    SYMTAB_NODE_PTR np;
 
+	    np = search_symtab(token_string, symtab_display[1]);
+	    if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+
+	    if (literal.type == INTEGER_LIT) {
+		    tp = np->typep = integer_typep;
+		    np->defn.info.constant.value.integer = literal.value.integer;
+	    } else {  /* literal.type == REAL_LIT */
+		    tp = np->typep = real_typep;
+		    np->defn.info.constant.value.real = literal.value.real;
+	    }
+
+	    crunch_symtab_node_ptr(np);
+	    get_token();
+
+	    break;
+	}
     case STRING: {
-      int length = strlen(literal.value.string);
+      SYMTAB_NODE_PTR np;
+	    int length = strlen(literal.value.string);
 
-      tp = length == 1 ? char_typep
-        : make_string_typep(length);
-      get_token();
-      break;
-    }
+	    np = search_symtab(token_string, symtab_display[1]);
+	    if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+
+	    if (length == 1) {
+		    np->defn.info.constant.value.character = literal.value.string[0];
+		    tp = char_typep;
+	    } else {
+		    np->typep = tp = make_string_typep(length);
+		    np->info.ptr  = alloc_bytes(length + 1);
+		    strcpy(np->info.ptr, literal.value.string);
+	    }
+
+	    crunch_symtab_node_ptr(np);
+
+	    get_token();
+	    break;    }
 
     case NOT:
       get_token();
@@ -392,6 +419,7 @@ TYPE_STRUCT_PTR variable(
   TYPE_STRUCT_PTR array_subscript_list();
   TYPE_STRUCT_PTR record_field();
 
+  crunch_symtab_node_ptr(var_idp);
   /*
   --  Check the variable's definition.
   */
@@ -491,6 +519,7 @@ TYPE_STRUCT_PTR record_field(TYPE_STRUCT_PTR tp)
 	  search_this_symtab(field_idp,
       tp->info.record.field_symtab);
 
+    crunch_symtab_node_ptr(field_idp);
 	  get_token();
 
 	  if (field_idp != NULL) return(field_idp->typep);

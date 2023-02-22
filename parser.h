@@ -43,6 +43,8 @@ void compound_statement(void);
 void routine(void);
 void actual_parm_list(SYMTAB_NODE_PTR rtn_idp, bool parm_check_flag);
 void program(void); 
+void crunch_symtab_node_ptr(SYMTAB_NODE_PTR np);
+void crunch_token(void);
 
 		/********************************/
 		/*                              */

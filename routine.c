@@ -27,8 +27,6 @@
 /*  Externals                                                   */
 /*--------------------------------------------------------------*/
 
-extern int              line_number;
-extern int              error_count;
 
 extern TOKEN_CODE       token;
 extern char             word_string[];
@@ -36,6 +34,9 @@ extern SYMTAB_NODE_PTR  symtab_display[];
 extern int              level;
 
 extern TYPE_STRUCT      dummy_type;
+
+extern char             *code_buffer;
+extern char             *code_bufferp;
 
 extern TOKEN_CODE       statement_start_list[],
 			statement_end_list[],
@@ -64,6 +65,8 @@ TYPE_STRUCT_PTR declared_routine_call(SYMTAB_NODE_PTR rtn_idp, bool parm_check_f
 
 void block(SYMTAB_NODE_PTR rtn_idp);
 
+char *create_code_segment(void);
+
 /*--------------------------------------------------------------*/
 /*  program       Process a program:                            */
 /*                                                              */
@@ -80,9 +83,12 @@ void program(void)
   --                  PARSE THE PROGRAM
   --
   --
-  --  Intialize the symbol table.
+  --  Intialize the symbol table and then allocate
+  --  the code buffer.
   */
   init_symtab();
+  code_buffer  = alloc_bytes(MAX_CODE_BUFFER_SIZE);
+  code_bufferp = code_buffer;
 
   /*
   --  Begin parsing with the program header.
@@ -107,7 +113,7 @@ void program(void)
   block(program_idp);
 
   program_idp->defn.info.routine.local_symtab = exit_scope();
-  program_idp->defn.info.routine.code_segment = NULL;
+  program_idp->defn.info.routine.code_segment = create_code_segment();
   analyze_block(program_idp->defn.info.routine.code_segment);
 
   if_token_get_else_error(PERIOD, MISSING_PERIOD);
@@ -121,21 +127,8 @@ void program(void)
   }
 
   quit_scanner();
-
-  /*
-  --  Print the parser's summary.
-  */
-  print_line("\n");
-  print_line("\n");
-  sprintf(buffer, "%20d Source lines.\n", line_number);
-  print_line(buffer);
-  sprintf(buffer, "%20d Source errors.\n", error_count);
-  print_line(buffer);
-
-  if (error_count == 0)
-    exit(0);
-  else
-    exit(-SYNTAX_ERROR);
+  free(code_buffer);
+  exit(0);
 }
 
 /*--------------------------------------------------------------*/
@@ -212,7 +205,8 @@ SYMTAB_NODE_PTR program_header(void)
     */
     synchronize(follow_parms_list, declaration_start_list, statement_start_list);
     if_token_get_else_error(RPAREN, MISSING_RPAREN);
-  }
+  } else
+    program_idp->defn.info.routine.parms = NULL;
   return(program_idp);
 }
 
@@ -248,7 +242,7 @@ void routine(void)
 	  rtn_idp->defn.info.routine.locals = NULL;
 	  block(rtn_idp);
 
-	  rtn_idp->defn.info.routine.code_segment = NULL;
+	  rtn_idp->defn.info.routine.code_segment = create_code_segment();
 	  analyze_block(rtn_idp->defn.info.routine.code_segment);
   } else {
 	  get_token();
@@ -704,6 +698,7 @@ TOKEN_CODE follow_decls_list[] = {SEMICOLON, BEGIN, END_OF_FILE, 0};
 
 void block(SYMTAB_NODE_PTR rtn_idp) /* id of program or routine */
 {
+  extern bool block_flag;
   declarations(rtn_idp);
 
   /*
@@ -713,5 +708,9 @@ void block(SYMTAB_NODE_PTR rtn_idp) /* id of program or routine */
   if (token != BEGIN)
     error(MISSING_BEGIN);
 
+  crunch_token();
+
+  block_flag = true;
   compound_statement();
+  block_flag = false;
 }

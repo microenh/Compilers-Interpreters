@@ -27,6 +27,7 @@
 /*--------------------------------------------------------------*/
 
 // extern TOKEN_CODE       token;
+extern char             token_string[];
 // extern char             word_string[];
 // extern LITERAL          literal;
 extern TOKEN_CODE       statement_start_list[], statement_end_list[];
@@ -35,6 +36,7 @@ extern TOKEN_CODE       statement_start_list[], statement_end_list[];
 
 extern SYMTAB_NODE_PTR  symtab_display[];
 extern int              level;
+extern char             *code_bufferp;
 
 // extern TYPE_STRUCT_PTR  integer_typep, real_typep,
 // 			boolean_typep, char_typep;
@@ -73,6 +75,7 @@ void statement(void)
 	    search_and_find_all_symtab(idp);
 
 	    if (idp->defn.key == PROC_DEFN) {
+        crunch_symtab_node_ptr(idp);
     		get_token();
 		    routine_call(idp, true);
 	    }
@@ -213,6 +216,7 @@ void for_statement(void)
 
   if (token == IDENTIFIER) {
   	search_and_find_all_symtab(for_idp);
+    crunch_symtab_node_ptr(for_idp);
 
     if ((for_idp->level != level) || (for_idp->defn.key != VAR_DEFN))
       error(INVALID_FOR_CONTROL);
@@ -369,6 +373,11 @@ TYPE_STRUCT_PTR case_label(void)
   --  Numeric constant:  Integer type only.
   */
   if (token == NUMBER) {
+
+  	SYMTAB_NODE_PTR np = search_symtab(token_string, symtab_display[1]);
+
+	  if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+	    crunch_symtab_node_ptr(np);  
   	if (literal.type == REAL_LIT)
       error(INVALID_CONSTANT);
 	  return(integer_typep);
@@ -382,6 +391,7 @@ TYPE_STRUCT_PTR case_label(void)
   	SYMTAB_NODE_PTR idp;
 
 	  search_all_symtab(idp);
+    crunch_symtab_node_ptr(idp);
 
 	  if (idp == NULL) {
 	    error(UNDEFINED_IDENTIFIER);
@@ -413,6 +423,10 @@ TYPE_STRUCT_PTR case_label(void)
   --  String constant:  Character type only.
   */
   else if (token == STRING) {
+	  SYMTAB_NODE_PTR np = search_symtab(token_string, symtab_display[1]);
+
+	  if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+	    crunch_symtab_node_ptr(np);    
 	  if (saw_sign)
       error(INVALID_CONSTANT);
 
