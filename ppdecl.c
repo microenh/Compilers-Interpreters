@@ -76,6 +76,7 @@ void analyze_routine_header(SYMTAB_NODE_PTR rtn_idp)
   	case PROG_DEFN:  emit("PROGRAM ");   break;
   	case PROC_DEFN:  emit("PROCEDURE "); break;
   	case FUNC_DEFN:  emit("FUNCTION ");  break;
+    default: break;
   }
 
   emit(rtn_idp->name);
@@ -267,6 +268,7 @@ void print_type(
 	    case SUBRANGE_FORM:     print_subrange_type(tp);    break;
 	    case ARRAY_FORM:        print_array_type(tp);       break;
 	    case RECORD_FORM:       print_record_type(tp);      break;
+      default: break;
     }
 }
 

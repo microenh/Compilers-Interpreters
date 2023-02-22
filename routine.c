@@ -22,11 +22,15 @@
 #include "scanner.h"
 #include "symtab.h"
 #include "parser.h"
+#include "exec.h"
 
 /*--------------------------------------------------------------*/
 /*  Externals                                                   */
 /*--------------------------------------------------------------*/
 
+extern int              line_number;
+extern int              error_count;
+extern long             exec_stmt_count;
 
 extern TOKEN_CODE       token;
 extern char             word_string[];
@@ -37,6 +41,10 @@ extern TYPE_STRUCT      dummy_type;
 
 extern char             *code_buffer;
 extern char             *code_bufferp;
+
+extern STACK_ITEM       *stack;
+extern STACK_ITEM_PTR   tos;
+extern STACK_ITEM_PTR   stack_frame_basep;
 
 extern TOKEN_CODE       statement_start_list[],
 			statement_end_list[],
@@ -51,13 +59,9 @@ char buffer[MAX_PRINT_LINE_LENGTH];
 /*--------------------------------------------------------------*/
 /*  Forwards                                                    */
 /*--------------------------------------------------------------*/
-
-SYMTAB_NODE_PTR formal_parm_list();
-SYMTAB_NODE_PTR program_header(), procedure_header(), function_header();
-
  
-SYMTAB_NODE_PTR program_header(void); 
 void routine(void);
+SYMTAB_NODE_PTR program_header(void); 
 SYMTAB_NODE_PTR procedure_header(void); 
 SYMTAB_NODE_PTR function_header(void);
 SYMTAB_NODE_PTR formal_parm_list(int *countp, int *total_sizep);
@@ -127,6 +131,48 @@ void program(void)
 
   quit_scanner();
   free(code_buffer);
+
+  /*
+  --  Print the parser's summary.
+  */
+  print_line("\n");
+  print_line("\n");
+  sprintf(buffer, "%20d Source lines.\n", line_number);
+  print_line(buffer);
+  sprintf(buffer, "%20d Source errors.\n", error_count);
+  print_line(buffer);
+
+  if (error_count > 0)
+    exit(-SYNTAX_ERROR);
+  else
+    printf("%c\n", FORM_FEED_CHAR);
+
+  /*
+  --                  EXECUTE THE PROGRAM
+  --
+  --
+  --  Allocate the runtime stack.
+  */
+  stack = alloc_array(STACK_ITEM, MAX_STACK_SIZE);
+  stack_frame_basep = tos = stack;
+
+  /*
+  --  Initialize the program's stack frame.
+  */
+  level = 1;
+  stack_frame_basep = tos + 1;
+  push_integer(0);        /* function return value */
+  push_address(NULL);     /* static link */
+  push_address(NULL);     /* dynamic link */
+  push_address(NULL);     /* return address */
+
+  /*
+  --  Go!
+  */
+  execute(program_idp);
+
+  free(stack);
+  printf("\n\nSuccessful completion.  %ld statements executed.\n\n", exec_stmt_count);  
   exit(0);
 }
 
@@ -453,7 +499,7 @@ SYMTAB_NODE_PTR formal_parm_list(
   TYPE_STRUCT_PTR parm_tp;                    /* parm type */
   DEFN_KEY        parm_defn;                  /* parm definition */
   int             parm_count = 0;             /* count of parms */
-  int             parm_offset = 0;
+  int             parm_offset = STACK_FRAME_HEADER_SIZE;
 
   get_token();
 
@@ -536,7 +582,7 @@ SYMTAB_NODE_PTR formal_parm_list(
 
   if_token_get_else_error(RPAREN, MISSING_RPAREN);
   *countp = parm_count;
-  *total_sizep = parm_offset;
+  *total_sizep = parm_offset  - STACK_FRAME_HEADER_SIZE;
 
   return(parm_listp);
 }

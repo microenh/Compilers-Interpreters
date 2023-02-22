@@ -750,7 +750,8 @@ int array_size(TYPE_STRUCT_PTR tp)         /* ptr to array type structure */
 
 void var_declarations(SYMTAB_NODE_PTR rtn_idp)    /* id of program or routine */
 {
-  var_or_field_declarations(rtn_idp, NULL, 0);
+  var_or_field_declarations(rtn_idp, NULL,
+    STACK_FRAME_HEADER_SIZE + rtn_idp->defn.info.routine.parm_count);
 }
 
 /*--------------------------------------------------------------*/

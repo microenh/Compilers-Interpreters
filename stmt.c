@@ -21,6 +21,7 @@
 #include "scanner.h"
 #include "symtab.h"
 #include "parser.h"
+#include "exec.h"
 
 /*--------------------------------------------------------------*/
 /*  Externals                                                   */
@@ -61,6 +62,8 @@ TYPE_STRUCT_PTR case_label(void);
 
 void statement(void)
 {
+  if (token != BEGIN)
+    crunch_statement_marker();
   /*
   --	Call the appropriate routine based on the first
   --	token of the statement.
@@ -376,7 +379,7 @@ TYPE_STRUCT_PTR case_label(void)
 
   	SYMTAB_NODE_PTR np = search_symtab(token_string, symtab_display[1]);
 
-	  if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+	  if (np == NULL) np = enter_symtab(token_string, &symtab_display[1]);
 	    crunch_symtab_node_ptr(np);  
   	if (literal.type == REAL_LIT)
       error(INVALID_CONSTANT);
@@ -425,7 +428,7 @@ TYPE_STRUCT_PTR case_label(void)
   else if (token == STRING) {
 	  SYMTAB_NODE_PTR np = search_symtab(token_string, symtab_display[1]);
 
-	  if (np == NULL) np = enter_symtab(token_string, symtab_display[1]);
+	  if (np == NULL) np = enter_symtab(token_string, &symtab_display[1]);
 	    crunch_symtab_node_ptr(np);    
 	  if (saw_sign)
       error(INVALID_CONSTANT);

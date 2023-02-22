@@ -24,8 +24,13 @@
 #define MAX_TOKEN_STRING_LENGTH MAX_SOURCE_LINE_LENGTH
 #define MAX_CODE_BUFFER_SIZE    4096
 #define MAX_NESTING_LEVEL       16
+#define MAX_STACK_SIZE          1024
+#define STACK_FRAME_HEADER_SIZE 4
 
 // #define analyze
+
+// typedef char *ADDRESS;
+typedef void *ADDRESS;
 
   /****************************************/
   /*                                      */

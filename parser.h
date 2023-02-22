@@ -19,7 +19,7 @@
 #include "common.h"
 #include "symtab.h"
 
-#define analyze
+// #define analyze
 
 /*--------------------------------------------------------------*/
 /*  Uses of a variable                                          */

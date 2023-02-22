@@ -19,6 +19,7 @@
 #include "common.h"
 #include "error.h"
 #include "scanner.h"
+#include "exec.h"
 
 /*--------------------------------------------------------------*/
 /*  Externals                                                   */
@@ -96,6 +97,15 @@ char *error_messages[] = {
   "Unimplemented feature",
 };
 
+char *runtime_error_messages[] = {
+  "Runtime stack overflow",
+  "Value out of range",
+  "Invalid CASE expression value",
+  "Division by zero",
+  "Invalid standard function argument",
+  "Unimplemented runtime feature",
+};
+
 /*--------------------------------------------------------------*/
 /*  Globals                                                     */
 /*--------------------------------------------------------------*/
@@ -145,5 +155,19 @@ void error(ERROR_CODE code)
 
 	  exit(-TOO_MANY_SYNTAX_ERRORS);
   }
+}
+
+/*--------------------------------------------------------------*/
+/*  runtime_error       Print a runtime error message and then  */
+/*                      abort the program execution.            */
+/*--------------------------------------------------------------*/
+
+void runtime_error(RUNTIME_ERROR_CODE code)  /* error code */
+{
+  char        *message = runtime_error_messages[code];
+
+  printf("\n*** RUNTIME ERROR in line %d: %s\n", exec_line_number, message);
+  printf("\nUnsuccessful completion.  %ld statements executed.\n\n", exec_stmt_count);
+  exit(-code);
 }
 

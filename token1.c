@@ -118,12 +118,12 @@ CHAR_CODE char_table[256];
 #define char_code(ch)   char_table[ch]
 
 
-void init_scanner(char *name);
 void quit_scanner(void);
 void print_token(void);
 void get_char(void);
 bool get_source_line(void);
 void skip_blanks(void);
+void init_scanner(char *name);
 void get_token(void);
 void get_word(void);
 bool is_reserved_word(void);
