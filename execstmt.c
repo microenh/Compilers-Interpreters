@@ -52,6 +52,12 @@ TYPE_STRUCT_PTR exec_standard_routine_call(SYMTAB_NODE_PTR rtn_idp);
 void exec_actual_parms(SYMTAB_NODE_PTR rtn_idp);
 void exec_compound_statement(void);
 
+void exec_case_statement(void);
+void exec_for_statement(void);
+void exec_if_statement(void);
+void exec_repeat_statement(void);
+void exec_while_statement(void);
+
 /*--------------------------------------------------------------*/
 /*  exec_statement      Execute a statement by calling the      */
 /*                      appropriate execution routine.          */
@@ -83,7 +89,31 @@ void exec_statement(void)
     case BEGIN:
       exec_compound_statement();
       break;
+
+    case CASE:
+      exec_case_statement();
+      break;
+
+    case FOR:
+      exec_for_statement();
+      break;
+
+    case IF:
+      exec_if_statement();
+      break;
+
+    case REPEAT:
+      exec_repeat_statement();
+      break;
+
+    case WHILE:
+      exec_while_statement();
+      break;
+
+    case SEMICOLON:
     case END:
+    case ELSE:
+    case UNTIL:                                    
       break;
 
     default: 
@@ -217,6 +247,7 @@ TYPE_STRUCT_PTR exec_routine_call(SYMTAB_NODE_PTR rtn_idp)  /* routine id */
 	  return(exec_standard_routine_call(rtn_idp));
 }
 
+
 /*--------------------------------------------------------------*/
 /*  exec_declared_routine_call      Execute a call to a         */
 /*                                  declared procedure or       */
@@ -263,18 +294,6 @@ TYPE_STRUCT_PTR exec_declared_routine_call(SYMTAB_NODE_PTR rtn_idp) /* routine i
   get_ctoken();       /* first token after return */
 
   return(rtn_idp->defn.key == PROC_DEFN ? NULL : rtn_idp->typep);
-}
-
-/*--------------------------------------------------------------*/
-/*  exec_standard_routine_call      Execute a call to a         */
-/*                                  standard procedure or       */
-/*                                  function.                   */
-/*--------------------------------------------------------------*/
-
-TYPE_STRUCT_PTR exec_standard_routine_call(SYMTAB_NODE_PTR rtn_idp) /* routine id */
-{
-  runtime_error(UNIMPLEMENTED_RUNTIME_FEATURE);
-  return NULL;
 }
 
 /*--------------------------------------------------------------*/
@@ -363,3 +382,267 @@ void exec_compound_statement(void)
     exec_statement();
   get_ctoken();
 }
+
+/*--------------------------------------------------------------*/
+/*  exec_case_statement         Execute a CASE statement:       */
+/*                                                              */
+/*                                  CASE <expr> OF              */
+/*                                      <case-branch> ;         */
+/*                                      ...                     */
+/*                                  END                         */
+/*--------------------------------------------------------------*/
+
+void exec_case_statement(void)
+
+{
+  int             case_expr_value;          /* CASE expr value */
+  int             case_label_count;         /* CASE label count */
+  int             case_label_value;         /* CASE label value */
+  char            *branch_table_location;   /* branch table addr */
+  char            *case_branch_location;    /* CASE branch addr */
+  TYPE_STRUCT_PTR case_expr_tp;             /* CASE expr type */
+  bool            done = false;
+
+  get_ctoken();       /* token after CASE */
+  branch_table_location = get_address_cmarker();
+
+  /*
+  --  Evaluate the CASE expression.
+  */
+  get_ctoken();
+  case_expr_tp = exec_expression();
+  case_expr_value = (case_expr_tp == integer_typep) || (case_expr_tp->form == ENUM_FORM)
+    ? tos->integer
+    : tos->byte;
+  pop();      /* expression value */
+
+  /*
+  --  Search the branch table for the expression value.
+  */
+  code_segmentp = branch_table_location;
+  get_ctoken();
+  case_label_count = get_cinteger();
+  while (!done && case_label_count--) {
+	  case_label_value     = get_cinteger();
+	  case_branch_location = get_caddress();
+	  done = case_label_value == case_expr_value;
+  }
+
+  /*
+  --  If found, go to the appropriate CASE branch.
+  */
+  if (case_label_count >= 0) {
+	  code_segmentp = case_branch_location;
+	  get_ctoken();
+	  exec_statement();
+
+	  code_segmentp = get_address_cmarker();
+	  get_ctoken();
+  } else
+    runtime_error(INVALID_CASE_VALUE);
+}
+
+/*--------------------------------------------------------------*/
+/*  exec_for_statement          Execute a FOR statement:        */
+/*                                                              */
+/*                                  FOR <id> := <expr>          */
+/*                                      TO|DOWNTO <expr>        */
+/*                                      DO <stmt>               */
+/*--------------------------------------------------------------*/
+
+void exec_for_statement(void)
+{
+  SYMTAB_NODE_PTR control_idp;           /* control var id */
+  TYPE_STRUCT_PTR control_tp;            /* control var type */
+  STACK_ITEM_PTR  targetp;               /* ptr to control target */
+  char            *loop_start_location;  /* addr of start of loop */
+  char            *loop_end_location;    /* addr of end of loop */
+  int             control_value;         /* value of control var */
+  int             initial_value, final_value, delta_value;
+
+  get_ctoken();       /* token after FOR */
+  loop_end_location = get_address_cmarker();
+
+  /*
+  --  Get the address of the control variable's stack item.
+  */
+  get_ctoken();
+  control_idp = get_symtab_cptr();
+  control_tp  = base_type(exec_variable(control_idp,  TARGET_USE)); /* 2/9/91 */
+  targetp     = (STACK_ITEM_PTR) tos->address;
+  pop();      /* control variable address */
+
+  /*
+  --  Evaluate the initial expression.
+  */
+  get_ctoken();
+  exec_expression();
+  initial_value = (control_tp == integer_typep)
+    ? tos->integer
+    : tos->byte;
+  pop();      /* initial value */
+
+  delta_value = (ctoken == TO) ? 1 : -1;
+
+  /*
+  --  Evaluate the final expression.
+  */
+  get_ctoken();
+  exec_expression();
+  final_value = (control_tp == integer_typep)
+    ? tos->integer
+    : tos->byte;
+  pop();      /* final value */
+
+  loop_start_location = code_segmentp;
+  control_value = initial_value;
+
+  /*
+  --  Execute the FOR loop.
+  */
+  while (((delta_value == 1) && (control_value <= final_value))
+    || ((delta_value == -1) && (control_value >= final_value))) {
+  	if (control_tp == integer_typep)
+      targetp->integer = control_value;
+	  else
+	    targetp->byte = control_value;
+
+	  get_ctoken();           /* token after DO */
+	  exec_statement();
+
+	  control_value += delta_value;
+	  code_segmentp = loop_start_location;
+  }
+
+  code_segmentp = loop_end_location;
+  get_ctoken();       /* token after FOR statement */
+}
+
+/*--------------------------------------------------------------*/
+/*  exec_if_statement   Execute an IF statement:                */
+/*                                                              */
+/*                          IF <expr> THEN <stmt>               */
+/*                                                              */
+/*                      or:                                     */
+/*                                                              */
+/*                          IF <expr> THEN <stmt> ELSE <stmt>   */
+/*--------------------------------------------------------------*/
+
+void exec_if_statement(void)
+{
+  char  *false_location;    /* address of false branch */
+  bool  test;
+
+  get_ctoken();       /* token after IF */
+  false_location = get_address_cmarker();
+
+  /*
+  --  Evaluate the boolean expression.
+  */
+  get_ctoken();
+  exec_expression();
+  test = tos->integer == 1;
+  pop();      /* boolean value */
+
+  if (test) {
+    /*
+    --  True:  Execute the true branch.
+    */
+    get_ctoken();   /* token after THEN */
+    exec_statement();
+
+    if (ctoken == ELSE) {
+	    get_ctoken();               /* token after ELSE */
+	    code_segmentp = get_address_cmarker();
+	    get_ctoken();               /* token after false stmt */
+  	}
+  } else {
+    /*
+    --  False:  Execute the false branch if there is one.
+    */
+    code_segmentp = false_location;
+    get_ctoken();
+
+    if (ctoken == ELSE) {
+      get_ctoken();               /* token after ELSE */
+      get_address_cmarker();      /* skip address marker */
+
+      get_ctoken();
+      exec_statement();
+    }
+  }
+}
+
+/*--------------------------------------------------------------*/
+/*  exec_repeat_statement       Execute a REPEAT statement:     */
+/*                                                              */
+/*                                  REPEAT <stmt-list>          */
+/*                                  UNTIL <expr>                */
+/*--------------------------------------------------------------*/
+
+void exec_repeat_statement(void)
+{
+  char *loop_start_location = code_segmentp;  /* addr of oop start */
+
+  do {
+  	get_ctoken();       /* token after REPEAT */
+
+    /*
+    --  Execute the statement list.
+    */
+    do {
+      exec_statement();
+    } while (ctoken != UNTIL);
+
+    /*
+    --  Evaluate the boolean expression.
+    */
+    get_ctoken();
+    exec_expression();
+    if (tos->integer == 0)
+      code_segmentp = loop_start_location;
+	  pop();          /* boolean value */
+  } while (code_segmentp == loop_start_location);
+}
+
+/*--------------------------------------------------------------*/
+/*  exec_while_statement        Process a WHILE statement:      */
+/*                                                              */
+/*                                  WHILE <expr> DO <stmt>      */
+/*--------------------------------------------------------------*/
+
+void exec_while_statement(void)
+{
+  char *loop_end_location;         /* addr of end of loop */
+  char *test_location;             /* addr of boolean expr */
+  bool loop_done = false;
+
+  get_ctoken();       /* token after WHILE */
+  loop_end_location = get_address_cmarker();
+  test_location     = code_segmentp;
+
+  do {
+    /*
+    --  Evaluate the boolean expression.
+    */
+    get_ctoken();
+    exec_expression();
+    if (tos->integer == 0) {
+      code_segmentp = loop_end_location;
+      loop_done = true;
+    }
+    pop();          /* boolean value */
+
+    /*
+    --  If true, execute the statement.
+    */
+    if (!loop_done) {
+        get_ctoken();
+        exec_statement();
+        code_segmentp = test_location;
+    }
+  } while (!loop_done);
+
+  get_ctoken();       /* token after WHILE statement */
+}
+

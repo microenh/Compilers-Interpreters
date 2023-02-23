@@ -103,7 +103,7 @@ void statement(void)
   --                          UNTIL may follow a statement.
   --                          Check for a missing semicolon.
   */
-  synchronize(statement_end_list, statement_start_list, NULL);
+  synchronize(statement_end_list, NULL, NULL);
   if (token_in(statement_start_list)) error(MISSING_SEMICOLON);
 }
 
@@ -160,8 +160,10 @@ void repeat_statement(void)
 void while_statement(void)
 {
   TYPE_STRUCT_PTR expr_tp;
+  char            *loop_end_location;
 
   get_token();
+  loop_end_location = crunch_address_marker(NULL);
 
   expr_tp = expression();
   if (expr_tp != boolean_typep)
@@ -169,6 +171,8 @@ void while_statement(void)
 
   if_token_get_else_error(DO, MISSING_DO);
   statement();
+
+  fixup_address_marker(loop_end_location);
 }
 
 /*--------------------------------------------------------------*/
@@ -184,8 +188,11 @@ void while_statement(void)
 void if_statement(void)
 {
   TYPE_STRUCT_PTR expr_tp;
+  char            *false_location;
+  char            *if_end_location;
 
   get_token();
+  false_location = crunch_address_marker(NULL);
 
   expr_tp = expression();
   if (expr_tp != boolean_typep)
@@ -194,12 +201,15 @@ void if_statement(void)
   if_token_get_else_error(THEN, MISSING_THEN);
   statement();
 
+  fixup_address_marker(false_location);
   /*
   --  ELSE branch?
   */
   if (token == ELSE) {
   	get_token();
+    if_end_location = crunch_address_marker(NULL);
 	  statement();
+    fixup_address_marker(if_end_location);
   }
 }
 
@@ -214,8 +224,10 @@ void for_statement(void)
 {
   SYMTAB_NODE_PTR for_idp;
   TYPE_STRUCT_PTR for_tp, expr_tp;
+  char            *loop_end_location;
 
   get_token();
+  loop_end_location = crunch_address_marker(NULL);
 
   if (token == IDENTIFIER) {
   	search_and_find_all_symtab(for_idp);
@@ -251,7 +263,22 @@ void for_statement(void)
 
   if_token_get_else_error(DO, MISSING_DO);
   statement();
+
+  fixup_address_marker(loop_end_location);  
 }
+
+/*--------------------------------------------------------------*/
+/*  CASE statement globals                                      */
+/*--------------------------------------------------------------*/
+
+typedef struct case_item {
+    int              label_value;
+    char             *branch_location;
+    struct case_item *next;
+} CASE_ITEM, *CASE_ITEM_PTR;
+
+CASE_ITEM_PTR case_item_head, case_item_tail;
+int           case_label_count;
 
 /*--------------------------------------------------------------*/
 /*  case_statement      Process a CASE statement:               */
@@ -271,8 +298,20 @@ void case_statement(void)
 {
   bool  another_branch;
   TYPE_STRUCT_PTR expr_tp;
+  TYPE_STRUCT_PTR case_label();
+  CASE_ITEM_PTR   case_itemp, next_case_itemp;
+  char            *branch_table_location;
+  char            *case_end_chain = NULL;
 
+    /*
+    --  Initializations for the branch table.
+    */
   get_token();
+  branch_table_location = crunch_address_marker(NULL);
+  case_item_head = case_item_tail = NULL;
+  case_label_count = 0;
+
+
   expr_tp = expression();
 
   if (((expr_tp->form != SCALAR_FORM) &&
@@ -294,6 +333,12 @@ void case_statement(void)
   while (another_branch) {
   	if (token_in(case_label_start_list))
       case_branch(expr_tp);
+    /*
+    --  Link another address marker at the end of
+    --  the CASE branch to point to the end of
+    --  the CASE statement.
+    */
+    case_end_chain = crunch_address_marker(case_end_chain);
 
 	  if (token == SEMICOLON) {
 	    get_token();
@@ -305,8 +350,26 @@ void case_statement(void)
 	  }
 	  else another_branch = false;
   }
-
+  /*
+  --  Emit the branch table.
+  */
+  fixup_address_marker(branch_table_location);
+  crunch_integer(case_label_count);
+  case_itemp = case_item_head;
+  while (case_itemp != NULL) {
+    crunch_integer(case_itemp->label_value);
+    crunch_offset(case_itemp->branch_location);
+    next_case_itemp = case_itemp->next;
+    free(case_itemp);
+    case_itemp = next_case_itemp;
+  }
   if_token_get_else_error(END, MISSING_END);
+
+  /*
+  --  Patch the CASE branch address markers.
+  */
+  while (case_end_chain != NULL)
+  	case_end_chain = fixup_address_marker(case_end_chain);
 }
 
 /*--------------------------------------------------------------*/
@@ -321,6 +384,9 @@ void case_branch(TYPE_STRUCT_PTR expr_tp) /* type of CASE expression */
 {
   bool         another_label;
   TYPE_STRUCT_PTR label_tp;
+  CASE_ITEM_PTR   case_itemp;
+  CASE_ITEM_PTR   old_case_item_tail = case_item_tail;
+
   TYPE_STRUCT_PTR case_label(void);
 
   /*
@@ -349,6 +415,18 @@ void case_branch(TYPE_STRUCT_PTR expr_tp) /* type of CASE expression */
   synchronize(follow_case_label_list, statement_start_list, NULL);
   if_token_get_else_error(COLON, MISSING_COLON);
 
+  /*
+  --  Loop to fill in the branch_location field of
+  --  each CASE_ITEM item for this branch.
+  */
+  case_itemp = old_case_item_tail == NULL
+        ? case_item_head
+        : old_case_item_tail->next;
+  while (case_itemp != NULL) {
+  	case_itemp->branch_location = code_bufferp;
+	  case_itemp = case_itemp->next;
+  }
+
   statement();
 }
 
@@ -362,6 +440,20 @@ TYPE_STRUCT_PTR case_label(void)
   TOKEN_CODE      sign     = PLUS;    /* unary + or - sign */
   bool         saw_sign = false;   /* TRUE iff unary sign */
   TYPE_STRUCT_PTR label_tp;
+  CASE_ITEM_PTR   case_itemp = alloc_struct(CASE_ITEM);
+
+  /*
+  --  Link in a CASE_ITEM item for this label.
+  */
+  if (case_item_head != NULL) {
+	  case_item_tail->next = case_itemp;
+	  case_item_tail = case_itemp;
+  } else {
+	  case_item_head = case_item_tail = case_itemp;
+  }
+  case_itemp->next = NULL;
+  ++case_label_count;
+
 
   /*
   --  Unary + or - sign.
@@ -381,8 +473,12 @@ TYPE_STRUCT_PTR case_label(void)
 
 	  if (np == NULL) np = enter_symtab(token_string, &symtab_display[1]);
 	    crunch_symtab_node_ptr(np);  
-  	if (literal.type == REAL_LIT)
-      error(INVALID_CONSTANT);
+	  if (literal.type == INTEGER_LIT)
+	    case_itemp->label_value = sign == PLUS
+        ?  literal.value.integer
+        : -literal.value.integer;
+
+    else error(INVALID_CONSTANT);
 	  return(integer_typep);
   }
 
@@ -406,16 +502,22 @@ TYPE_STRUCT_PTR case_label(void)
 	    return(&dummy_type);
 	  }
 
-	  else if (idp->typep == integer_typep)
-	    return(integer_typep);
+    else if (idp->typep == integer_typep) {
+      case_itemp->label_value = sign == PLUS
+        ?  idp->defn.info.constant.value.integer
+        : -idp->defn.info.constant.value.integer;
+      return(integer_typep);
+    }
 
 	  else if (idp->typep == char_typep) {
 	    if (saw_sign) error(INVALID_CONSTANT);
+	    case_itemp->label_value = idp->defn.info.constant.value.character;
 	    return(char_typep);
 	  }
 
 	  else if (idp->typep->form == ENUM_FORM) {
 	    if (saw_sign) error(INVALID_CONSTANT);
+        case_itemp->label_value = idp->defn.info.constant.value.integer;
 	    return(idp->typep);
 	  }
 
@@ -433,8 +535,10 @@ TYPE_STRUCT_PTR case_label(void)
 	  if (saw_sign)
       error(INVALID_CONSTANT);
 
-	  if (strlen(literal.value.string) == 1) return(char_typep);
-	  else {
+    if (strlen(literal.value.string) == 1) {
+      case_itemp->label_value = literal.value.string[0];
+      return(char_typep);
+    } else {
 	    error(INVALID_CONSTANT);
 	    return(&dummy_type);
 	  }

@@ -18,6 +18,7 @@
 #include "parser.h"
 
 #define STATEMENT_MARKER 0x70
+#define ADDRESS_MARKER   0x71
 
 extern int  exec_line_number;
 extern long exec_stmt_count;
@@ -48,6 +49,12 @@ SYMTAB_NODE_PTR get_symtab_cptr();
 int             get_statement_cmarker();
 TYPE_STRUCT_PTR exec_routine_call();
 TYPE_STRUCT_PTR exec_expression(), exec_variable();
+char            *crunch_address_marker();
+char            *fixup_address_marker();
+int             get_statement_cmarker();
+char            *get_address_cmarker();
+int             get_cinteger();
+char            *get_caddress();
 
 		/************************/
 		/*                      */
