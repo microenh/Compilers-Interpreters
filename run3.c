@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
   --  Initialize the scanner.
   */
   init_scanner(argv[1]);
+  
 
   /*
   --  Process a program.

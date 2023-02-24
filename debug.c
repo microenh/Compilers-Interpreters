@@ -144,7 +144,7 @@ void init_debugger(void)
   /*
   --  Initialize the debugger's globals.
   */
-  console = fopen("CON", "r");
+  console = stdin; /* fopen("CON", "r"); */
   code_buffer = alloc_bytes(MAX_SOURCE_LINE_LENGTH + 1);
 
   print_flag = false;
