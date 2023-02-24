@@ -22,27 +22,24 @@
 #include <stdio.h>
 #include "symtab.h"
 #include "exec.h"
+#include "scanner.h"
 
 /*--------------------------------------------------------------*/
 /*  main                Initialize the scanner and call         */
 /*                      routine program.                        */
 /*--------------------------------------------------------------*/
 
-main(argc, argv)
-
-    int  argc;
-    char *argv[];
-
+int main(int argc, char *argv[])
 {
-    /*
-    --  Initialize the scanner.
-    */
-    init_scanner(argv[1]);
+  /*
+  --  Initialize the scanner.
+  */
+  init_scanner(argv[1]);
 
-    /*
-    --  Process a program.
-    */
-    get_token();
-    program();
+  /*
+  --  Process a program.
+  */
+  get_token();
+  program();
 }
 
