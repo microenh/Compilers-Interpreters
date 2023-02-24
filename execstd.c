@@ -63,6 +63,10 @@ TYPE_STRUCT_PTR exec_eof_eoln(SYMTAB_NODE_PTR rtn_idp);
 TYPE_STRUCT_PTR exec_abs_sqr(SYMTAB_NODE_PTR rtn_idp);
 TYPE_STRUCT_PTR exec_arctan_cos_exp_ln_sin_sqrt(SYMTAB_NODE_PTR rtn_idp);
 TYPE_STRUCT_PTR exec_pred_succ(SYMTAB_NODE_PTR rtn_idp);
+TYPE_STRUCT_PTR exec_chr(void);
+TYPE_STRUCT_PTR exec_odd(void);
+TYPE_STRUCT_PTR exec_ord(void);
+TYPE_STRUCT_PTR exec_round_trunc(SYMTAB_NODE_PTR rtn_idp);
 
 /*--------------------------------------------------------------*/
 /*  Globals                                                     */
@@ -122,6 +126,9 @@ TYPE_STRUCT_PTR exec_standard_routine_call(SYMTAB_NODE_PTR rtn_idp) /* routine i
     case ROUND:
     case TRUNC:
       return(exec_round_trunc(rtn_idp));
+
+    default:
+      return NULL;
   }
 }
 
@@ -295,6 +302,9 @@ TYPE_STRUCT_PTR exec_eof_eoln(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 		    ungetc(ch, stdin);
 	    }
 	    break;
+
+    default:
+      break;
   }
 
   get_ctoken();       /* token after function name */
@@ -360,6 +370,7 @@ TYPE_STRUCT_PTR exec_arctan_cos_exp_ln_sin_sqrt(SYMTAB_NODE_PTR rtn_idp) /* rout
         case LN:        tos->real = log(tos->real);     break;
         case SIN:       tos->real = sin(tos->real);     break;
         case SQRT:      tos->real = sqrt(tos->real);    break;
+        default: break;
     }
   }
 
@@ -394,18 +405,17 @@ TYPE_STRUCT_PTR exec_pred_succ(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 /*                          integer parm => character result    */
 /*--------------------------------------------------------------*/
 
-    TYPE_STRUCT_PTR
-exec_chr()
+TYPE_STRUCT_PTR exec_chr(void)
 
 {
-    get_ctoken();       /* ( */
-    get_ctoken();
-    exec_expression();
+  get_ctoken();       /* ( */
+  get_ctoken();
+  exec_expression();
 
-    tos->byte = tos->integer;
+  tos->byte = tos->integer;
 
-    get_ctoken();       /* token after ) */
-    return(char_typep);
+  get_ctoken();       /* token after ) */
+  return(char_typep);
 }
 
 /*--------------------------------------------------------------*/
@@ -413,18 +423,17 @@ exec_chr()
 /*                          integer parm => boolean result      */
 /*--------------------------------------------------------------*/
 
-    TYPE_STRUCT_PTR
-exec_odd()
+TYPE_STRUCT_PTR exec_odd(void)
 
 {
-    get_ctoken();       /* ( */
-    get_ctoken();
-    exec_expression();
+  get_ctoken();       /* ( */
+  get_ctoken();
+  exec_expression();
 
-    tos->integer &= 1;
+  tos->integer &= 1;
 
-    get_ctoken();       /* token after ) */
-    return(boolean_typep);
+  get_ctoken();       /* token after ) */
+  return(boolean_typep);
 }
 
 /*--------------------------------------------------------------*/
@@ -432,16 +441,15 @@ exec_odd()
 /*                          enumeration parm => integer result  */
 /*--------------------------------------------------------------*/
 
-    TYPE_STRUCT_PTR
-exec_ord()
+TYPE_STRUCT_PTR exec_ord(void)
 
 {
-    get_ctoken();       /* ( */
-    get_ctoken();
-    exec_expression();
+  get_ctoken();       /* ( */
+  get_ctoken();
+  exec_expression();
 
-    get_ctoken();       /* token after ) */
-    return(integer_typep);
+  get_ctoken();       /* token after ) */
+  return(integer_typep);
 }
 
 /*--------------------------------------------------------------*/
@@ -449,25 +457,22 @@ exec_ord()
 /*                          real parm => integer result         */
 /*--------------------------------------------------------------*/
 
-    TYPE_STRUCT_PTR
-exec_round_trunc(rtn_idp)
-
-    SYMTAB_NODE_PTR rtn_idp;            /* routine id */
-
+TYPE_STRUCT_PTR exec_round_trunc(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 {
-    get_ctoken();       /* ( */
-    get_ctoken();
-    exec_expression();
+  get_ctoken();       /* ( */
+  get_ctoken();
+  exec_expression();
 
-    if (rtn_idp->defn.info.routine.key == ROUND) {
-	tos->integer = tos->real > 0.0
-			   ? (int) (tos->real + 0.5)
-			   : (int) (tos->real - 0.5);
-    }
-    else tos->integer = (int) tos->real;
+  if (rtn_idp->defn.info.routine.key == ROUND) {
+    tos->integer = tos->real > 0.0
+      ? (int) (tos->real + 0.5)
+      : (int) (tos->real - 0.5);
+  }
+  else
+    tos->integer = (int) tos->real;
 
-    get_ctoken();       /* token after ) */
-    return(integer_typep);
+  get_ctoken();       /* token after ) */
+  return(integer_typep);
 }
 
 

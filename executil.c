@@ -292,7 +292,7 @@ char *get_address_cmarker(void)
 /*--------------------------------------------------------------*/
 /*  get_cinteger        Extract an integer value from the       */
 /*                      current code segment and return the     */
-/*                      value.
+/*                      value.                                  */
 /*--------------------------------------------------------------*/
 
 int get_cinteger(void)

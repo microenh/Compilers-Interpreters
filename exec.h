@@ -55,6 +55,8 @@ int             get_statement_cmarker();
 char            *get_address_cmarker();
 int             get_cinteger();
 char            *get_caddress();
+void            crunch_integer(int value);
+void            crunch_offset(ADDRESS address);
 
 		/************************/
 		/*                      */
@@ -85,7 +87,7 @@ char            *get_caddress();
 /*                              are not compiled.               */
 /*--------------------------------------------------------------*/
 
-#define trace
+// #define trace
 
 #ifndef trace
 #define trace_routine_entry(idp)
