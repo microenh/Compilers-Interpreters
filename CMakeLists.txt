@@ -149,3 +149,20 @@ add_executable(run2
   routine.c
   standard.c 
 )
+
+add_executable(run3
+  run3.c
+  debug.c
+  execexpr.c
+  execstmt.c
+  executil.c
+  execstd.c
+  scanner.c
+  error.c 
+  symtab.c 
+  stmt.c 
+  expr.c
+  decl.c
+  routine.c
+  standard.c 
+)

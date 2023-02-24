@@ -22,6 +22,7 @@
 
 extern int  exec_line_number;
 extern long exec_stmt_count;
+extern bool debugger_command_flag;
 
 /*--------------------------------------------------------------*/
 /*  Runtime stack                                               */
@@ -57,6 +58,10 @@ int             get_cinteger();
 char            *get_caddress();
 void            crunch_integer(int value);
 void            crunch_offset(ADDRESS address);
+void            init_debugger(void);
+void            read_debugger_command(void);
+void assignment_statement(SYMTAB_NODE_PTR var_idp);
+void exec_assignment_statement(SYMTAB_NODE_PTR idp);
 
 		/************************/
 		/*                      */
@@ -87,7 +92,7 @@ void            crunch_offset(ADDRESS address);
 /*                              are not compiled.               */
 /*--------------------------------------------------------------*/
 
-// #define trace
+#define trace
 
 #ifndef trace
 #define trace_routine_entry(idp)

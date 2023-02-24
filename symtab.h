@@ -104,6 +104,9 @@ typedef struct type_struct {
     struct {
       struct symtab_node *field_symtab;
     } record;
+
+    void *ptr;
+    
   } info;
 } TYPE_STRUCT, *TYPE_STRUCT_PTR;
 

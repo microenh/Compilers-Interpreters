@@ -150,9 +150,10 @@ void error(ERROR_CODE code)
 
   if (error_count > MAX_SYNTAX_ERRORS) {
   	sprintf(message_buffer, "Too many syntax errors.  Aborted.\n");
-	  if (print_flag) print_line(message_buffer);
-	  else            printf("%s", message_buffer);
-
+	  if (print_flag)
+      print_line(message_buffer);
+	  else
+      printf("%s", message_buffer);
 	  exit(-TOO_MANY_SYNTAX_ERRORS);
   }
 }
@@ -164,10 +165,12 @@ void error(ERROR_CODE code)
 
 void runtime_error(RUNTIME_ERROR_CODE code)  /* error code */
 {
-  char        *message = runtime_error_messages[code];
+  char *message = runtime_error_messages[code];
 
-  printf("\n*** RUNTIME ERROR in line %d: %s\n", exec_line_number, message);
-  printf("\nUnsuccessful completion.  %ld statements executed.\n\n", exec_stmt_count);
-  exit(-code);
+  if (debugger_command_flag)
+    printf("%s\n", message);
+  else {
+	  printf("\n*** RUNTIME ERROR in line %d: %s\n", exec_line_number, message);
+	  read_debugger_command();
+  }
 }
-

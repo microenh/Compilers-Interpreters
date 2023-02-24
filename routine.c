@@ -167,6 +167,11 @@ void program(void)
   push_address(NULL);     /* return address */
 
   /*
+  --  Initialize the debugger.
+  */
+  init_debugger();
+
+  /*
   --  Go!
   */
   execute(program_idp);
