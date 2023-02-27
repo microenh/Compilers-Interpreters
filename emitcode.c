@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include "symtab.h"
 #include "code.h"
 
@@ -54,7 +55,7 @@ void emit_text_equate(SYMTAB_NODE_PTR idp);
 void emit_load_value(SYMTAB_NODE_PTR var_idp, TYPE_STRUCT_PTR var_tp);
 void emit_push_operand(TYPE_STRUCT_PTR tp);
 void emit_push_address(SYMTAB_NODE_PTR var_idp);
-void emit_push_return_value_address(SYMTAB_NODE_PTRvar_idp);
+void emit_push_return_value_address(SYMTAB_NODE_PTR var_idp);
 void emit_promote_to_real(TYPE_STRUCT_PTR tp1, TYPE_STRUCT_PTR tp2);
 
 		/****************************************/

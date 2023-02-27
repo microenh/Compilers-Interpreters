@@ -175,6 +175,8 @@ TYPE_STRUCT_PTR expression(void)
 	    case NE:    jump_opcode = JUMP_NE;  break;
 	    case GE:    jump_opcode = JUMP_GE;  break;
 	    case GT:    jump_opcode = JUMP_GT;  break;
+      default:
+        break;
 	  }
 
     jump_label_index = new_label_index();
@@ -550,7 +552,7 @@ TYPE_STRUCT_PTR float_literal(char string[], float value)
   --  if it isn't already in there.
   */
   if (np == NULL) {
-    np = enter_symtab(string, symtab_display[1]);
+    np = enter_symtab(string, &symtab_display[1]);
     np->defn.key = CONST_DEFN;
     np->defn.info.constant.value.real  = value;
     np->label_index = new_label_index();
@@ -585,7 +587,7 @@ TYPE_STRUCT_PTR string_literal(char string[], int length)
   --  if it isn't already in there.
   */
   if (np == NULL) {
-    np = enter_symtab(buffer, symtab_display[1]);
+    np = enter_symtab(buffer, &symtab_display[1]);
     np->defn.key = CONST_DEFN;
     np->label_index = new_label_index();
     np->next = string_literal_list;

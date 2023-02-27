@@ -98,6 +98,8 @@ typedef enum {
 	/*                                              */
 	/************************************************/
 
+  void operator(INSTRUCTION opcode);
+
 /*--------------------------------------------------------------*/
 /*  emit                Emit a no-operand instruction.          */
 /*--------------------------------------------------------------*/
@@ -160,5 +162,41 @@ typedef enum {
 /*--------------------------------------------------------------*/
 
 #define new_label_index()       ++label_index
+
+/*--------------------------------------------------------------*/
+/*  Forwards                                                    */
+/*--------------------------------------------------------------*/
+
+void reg(REGISTER r);
+void operator(INSTRUCTION opcode);
+void emit_program_prologue(void);
+void emit_program_epilogue(SYMTAB_NODE_PTR prog_idp);
+void emit_main_prologue(void);
+void emit_main_epilogue(void);
+void emit_routine_prologue(SYMTAB_NODE_PTR rtn_idp);
+void emit_routine_epilogue(SYMTAB_NODE_PTR rtn_idp);
+void emit_declarations(SYMTAB_NODE_PTR rtn_idp);
+void emit_numeric_equate(SYMTAB_NODE_PTR idp);
+void emit_text_equate(SYMTAB_NODE_PTR idp);
+void emit_load_value(SYMTAB_NODE_PTR var_idp, TYPE_STRUCT_PTR var_tp);
+void emit_push_operand(TYPE_STRUCT_PTR tp);
+void emit_push_address(SYMTAB_NODE_PTR var_idp);
+void emit_push_return_value_address(SYMTAB_NODE_PTR var_idp);
+void emit_promote_to_real(TYPE_STRUCT_PTR tp1, TYPE_STRUCT_PTR tp2);
+
+void integer_lit(int n);
+void name_lit(char *name);
+void tagged_name(SYMTAB_NODE_PTR idp);
+void word(SYMTAB_NODE_PTR idp);
+void byte_indirect(REGISTER r);
+void byte(SYMTAB_NODE_PTR idp);
+void word_indirect(REGISTER r);
+void high_dword(SYMTAB_NODE_PTR idp);
+void high_dword_label(char *prefix, int index);
+void high_dword_indirect(REGISTER r);
+void word_label(char *prefix, int index);
+
+void label(char *prefix, int index);
+void char_lit(char ch);
 
 #endif

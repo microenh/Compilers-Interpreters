@@ -92,7 +92,7 @@ void exec_assignment_statement(SYMTAB_NODE_PTR idp);
 /*                              are not compiled.               */
 /*--------------------------------------------------------------*/
 
-#define trace
+// #define trace
 
 #ifndef trace
 #define trace_routine_entry(idp)
