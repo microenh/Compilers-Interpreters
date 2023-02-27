@@ -92,6 +92,5 @@ typedef enum {
 } RUNTIME_ERROR_CODE;
 
 void error(ERROR_CODE code);
-void runtime_error(RUNTIME_ERROR_CODE code);
 
 #endif

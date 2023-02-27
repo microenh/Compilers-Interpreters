@@ -157,20 +157,3 @@ void error(ERROR_CODE code)
 	  exit(-TOO_MANY_SYNTAX_ERRORS);
   }
 }
-
-/*--------------------------------------------------------------*/
-/*  runtime_error       Print a runtime error message and then  */
-/*                      abort the program execution.            */
-/*--------------------------------------------------------------*/
-
-void runtime_error(RUNTIME_ERROR_CODE code)  /* error code */
-{
-  char *message = runtime_error_messages[code];
-
-  if (debugger_command_flag)
-    printf("%s\n", message);
-  else {
-	  printf("\n*** RUNTIME ERROR in line %d: %s\n", exec_line_number, message);
-	  read_debugger_command();
-  }
-}

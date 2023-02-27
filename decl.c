@@ -20,6 +20,7 @@
 #include "scanner.h"
 #include "symtab.h"
 #include "parser.h"
+#include "code.h"
 
 /*--------------------------------------------------------------*/
 /*  Externals                                                   */
@@ -37,6 +38,8 @@ extern int              level;
 // 			boolean_typep, char_typep;
 
 // extern TYPE_STRUCT dummy_type;
+
+extern int              label_index;
 
 extern TOKEN_CODE       declaration_start_list[],
 			statement_start_list[];
@@ -82,6 +85,12 @@ void declarations(SYMTAB_NODE_PTR rtn_idp)  /* id of program or routine */
 	  get_token();
 	  var_declarations(rtn_idp);
   }
+
+  /*
+  --  Emit declarations for parameters and local variables.
+  */
+  if (rtn_idp->defn.key != PROG_DEFN)
+    emit_declarations(rtn_idp);
 
   /*
   --  Loop to process routine (procedure and function)
@@ -751,7 +760,9 @@ int array_size(TYPE_STRUCT_PTR tp)         /* ptr to array type structure */
 void var_declarations(SYMTAB_NODE_PTR rtn_idp)    /* id of program or routine */
 {
   var_or_field_declarations(rtn_idp, NULL,
-    STACK_FRAME_HEADER_SIZE + rtn_idp->defn.info.routine.parm_count);
+    rtn_idp->defn.key == PROC_DEFN
+      ? PROC_LOCALS_STACK_FRAME_OFFSET
+      : FUNC_LOCALS_STACK_FRAME_OFFSET);
 }
 
 /*--------------------------------------------------------------*/
@@ -806,7 +817,7 @@ void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_t
         search_and_enter_this_symtab(idp, record_tp->info.record.field_symtab);
         idp->defn.key = FIELD_DEFN;
 	    }
-	    idp->label_index = 0;
+	    idp->label_index = new_label_index();
 
 	    /*
 	    --  Link ids together into a sublist.
@@ -830,6 +841,8 @@ void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_t
     if_token_get_else_error(COLON, MISSING_COLON);
     tp = do_type();
     size = tp->size;
+    if (size & 1)
+      ++size;   /* round up to even */
 
     /*
     --  Assign the offset and the type to all variable or field
@@ -839,12 +852,18 @@ void var_or_field_declarations(SYMTAB_NODE_PTR rtn_idp, TYPE_STRUCT_PTR record_t
 	    idp->typep = tp;
 
 	    if (var_flag) {
+        offset -= size;
 		    total_size += size;
-		    idp->defn.info.data.offset = offset++;
+		    idp->defn.info.data.offset = offset;
 		    analyze_var_decl(idp);
 	    } else { /* record fields */
 		    idp->defn.info.data.offset = offset;
 		    offset += size;
+        /*
+        --  Emit numeric equate for the field id's
+        --  name and offset.
+        */
+        emit_numeric_equate(idp);
 	    }
 	  }
 

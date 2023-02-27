@@ -313,13 +313,6 @@ void get_token(void)
     case EOF_CODE:  token = END_OF_FILE;    break;
     default:        get_special();          break;
   }
-
-  /*
-  --  For the interpreter:  While parsing a block, crunch
-  --  the token code and append it to the code buffer.
-  */
-  if (block_flag)
-    crunch_token();
 }
 
 /*--------------------------------------------------------------*/
@@ -763,6 +756,7 @@ void close_source_file(void)
 bool get_source_line(void)
 {
   char print_buffer[MAX_SOURCE_LINE_LENGTH + 9];
+  extern FILE *code_file;
 
   if ((fgets(source_buffer, MAX_SOURCE_LINE_LENGTH, source_file)) != NULL) {
     ++line_number;
@@ -772,7 +766,7 @@ bool get_source_line(void)
           line_number, level, source_buffer);
         print_line(print_buffer);
     }
-
+    fprintf(code_file, "; %4d: %s", line_number, source_buffer);
 	  return(true);
   }
     else return(false);

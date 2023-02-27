@@ -166,3 +166,17 @@ add_executable(run3
   routine.c
   standard.c 
 )
+
+add_executable(compile1
+  compile1.c 
+  routine.c
+  standard.c 
+  stmt.c 
+  expr.c
+  decl.c
+  scanner.c
+  symtab.c 
+  emitasm.c 
+  emitcode.c 
+  error.c 
+)

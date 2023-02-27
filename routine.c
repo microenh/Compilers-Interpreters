@@ -22,7 +22,7 @@
 #include "scanner.h"
 #include "symtab.h"
 #include "parser.h"
-#include "exec.h"
+#include "code.h"
 
 /*--------------------------------------------------------------*/
 /*  Externals                                                   */
@@ -37,14 +37,13 @@ extern char             word_string[];
 extern SYMTAB_NODE_PTR  symtab_display[];
 extern int              level;
 
+extern TYPE_STRUCT_PTR  integer_typep, real_typep;
 extern TYPE_STRUCT      dummy_type;
 
-extern char             *code_buffer;
-extern char             *code_bufferp;
-
-extern STACK_ITEM       *stack;
-extern STACK_ITEM_PTR   tos;
-extern STACK_ITEM_PTR   stack_frame_basep;
+extern int              label_index;
+extern char             asm_buffer[];
+extern char             *asm_bufferp;
+extern FILE             *code_file;
 
 extern TOKEN_CODE       statement_start_list[],
 			statement_end_list[],
@@ -68,8 +67,8 @@ SYMTAB_NODE_PTR formal_parm_list(int *countp, int *total_sizep);
 TYPE_STRUCT_PTR declared_routine_call(SYMTAB_NODE_PTR rtn_idp, bool parm_check_flag);
 
 void block(SYMTAB_NODE_PTR rtn_idp);
+void reverse_list(SYMTAB_NODE_PTR * listpp);
 
-char *create_code_segment(void);
 
 /*--------------------------------------------------------------*/
 /*  program       Process a program:                            */
@@ -84,16 +83,13 @@ void program(void)
   SYMTAB_NODE_PTR program_idp;        /* program id */
 
   /*
-  --                  PARSE THE PROGRAM
-  --
-  --
-  --  Intialize the symbol table and then allocate
-  --  the code buffer.
-  */
-  init_symtab();
-  code_buffer  = alloc_bytes(MAX_CODE_BUFFER_SIZE);
-  code_bufferp = code_buffer;
+    --  Intialize the symbol table and then emit
+    --  the program prologue code.
+    */
 
+  init_symtab();
+
+  emit_program_prologue();
   /*
   --  Begin parsing with the program header.
   */
@@ -116,10 +112,15 @@ void program(void)
   block(program_idp);
 
   program_idp->defn.info.routine.local_symtab = exit_scope();
-  program_idp->defn.info.routine.code_segment = create_code_segment();
-  analyze_block(program_idp->defn.info.routine.code_segment);
 
   if_token_get_else_error(PERIOD, MISSING_PERIOD);
+
+  /*
+  --  Emit the main routine's epilogue code
+  --  followed by the program's epilogue code.
+  */
+  emit_main_epilogue();
+  emit_program_epilogue(program_idp);
 
   /*
   --  Look for the end of file.
@@ -130,7 +131,7 @@ void program(void)
   }
 
   quit_scanner();
-  free(code_buffer);
+
 
   /*
   --  Print the parser's summary.
@@ -142,43 +143,11 @@ void program(void)
   sprintf(buffer, "%20d Source errors.\n", error_count);
   print_line(buffer);
 
-  if (error_count > 0)
-    exit(-SYNTAX_ERROR);
+  if (error_count == 0)
+    exit(0);
   else
-    printf("%c\n", FORM_FEED_CHAR);
+    exit(-SYNTAX_ERROR);
 
-  /*
-  --                  EXECUTE THE PROGRAM
-  --
-  --
-  --  Allocate the runtime stack.
-  */
-  stack = alloc_array(STACK_ITEM, MAX_STACK_SIZE);
-  stack_frame_basep = tos = stack;
-
-  /*
-  --  Initialize the program's stack frame.
-  */
-  level = 1;
-  stack_frame_basep = tos + 1;
-  push_integer(0);        /* function return value */
-  push_address(NULL);     /* static link */
-  push_address(NULL);     /* dynamic link */
-  push_address(NULL);     /* return address */
-
-  /*
-  --  Initialize the debugger.
-  */
-  init_debugger();
-
-  /*
-  --  Go!
-  */
-  execute(program_idp);
-
-  free(stack);
-  printf("\n\nSuccessful completion.  %ld statements executed.\n\n", exec_stmt_count);  
-  exit(0);
 }
 
 /*--------------------------------------------------------------*/
@@ -209,7 +178,7 @@ SYMTAB_NODE_PTR program_header(void)
     program_idp->defn.info.routine.total_parm_size = 0;
     program_idp->defn.info.routine.total_local_size = 0;
     program_idp->typep = &dummy_type;
-    program_idp->label_index = 0;
+    program_idp->label_index = new_label_index();
     get_token();
   } else
     error(MISSING_IDENTIFIER);
@@ -291,15 +260,18 @@ void routine(void)
 
 	  rtn_idp->defn.info.routine.locals = NULL;
 	  block(rtn_idp);
-
-	  rtn_idp->defn.info.routine.code_segment = create_code_segment();
-	  analyze_block(rtn_idp->defn.info.routine.code_segment);
   } else {
 	  get_token();
 	  rtn_idp->defn.info.routine.key = FORWARD;
 	  analyze_routine_header(rtn_idp);
   }
+  /*
+  --  Exit the current scope and emit the
+  --  routine's epilogue code.
+  */
+
   rtn_idp->defn.info.routine.local_symtab = exit_scope();
+  emit_routine_epilogue(rtn_idp);
 }
 
 /*--------------------------------------------------------------*/
@@ -338,7 +310,7 @@ SYMTAB_NODE_PTR procedure_header(void)
         proc_idp->defn.key = PROC_DEFN;
         proc_idp->defn.info.routine.total_local_size = 0;
         proc_idp->typep = &dummy_type;
-        proc_idp->label_index = 0;
+        proc_idp->label_index = new_label_index();
     } else if ((proc_idp->defn.key == PROC_DEFN) && (proc_idp->defn.info.routine.key == FORWARD))
 	    forward_flag = true;
 	  else
@@ -417,7 +389,7 @@ SYMTAB_NODE_PTR function_header(void)
 	    func_idp->defn.key = FUNC_DEFN;
 	    func_idp->defn.info.routine.total_local_size = 0;
 	    func_idp->typep = &dummy_type;
-	    func_idp->label_index = 0;
+	    func_idp->label_index = new_label_index();
 	  } else if ((func_idp->defn.key == FUNC_DEFN) && (func_idp->defn.info.routine.key == FORWARD))
 	    forward_flag = true;
 	  else
@@ -504,7 +476,7 @@ SYMTAB_NODE_PTR formal_parm_list(
   TYPE_STRUCT_PTR parm_tp;                    /* parm type */
   DEFN_KEY        parm_defn;                  /* parm definition */
   int             parm_count = 0;             /* count of parms */
-  int             parm_offset = STACK_FRAME_HEADER_SIZE;
+  int             parm_offset = PARAMETERS_STACK_FRAME_OFFSET;
 
   get_token();
 
@@ -529,7 +501,7 @@ SYMTAB_NODE_PTR formal_parm_list(
     while (token == IDENTIFIER) {
 	    search_and_enter_local_symtab(parm_idp);
 	    parm_idp->defn.key    = parm_defn;
-	    parm_idp->label_index = 0;
+	    parm_idp->label_index = new_label_index();
 	    ++parm_count;
 
 	    if (parm_listp == NULL)
@@ -563,13 +535,11 @@ SYMTAB_NODE_PTR formal_parm_list(
 	  }
 
     /*
-    --  Assign the offset and the type to all parm ids
-    --  in the sublist.
+    --  Assign the type to all parm ids in the sublist.
     */
     for (parm_idp = first_idp; parm_idp != NULL; parm_idp = parm_idp->next) {
       parm_idp->typep = parm_tp;
-      parm_idp->defn.info.data.offset = parm_offset++;
-    }
+     }
 
     /*
     --  Link this list to the list of all parm ids.
@@ -585,11 +555,52 @@ SYMTAB_NODE_PTR formal_parm_list(
     if_token_get(SEMICOLON);
   }
 
+  /*
+  --  Assign the offset to all parm ids in reverse order.
+  */
+  reverse_list(&parm_listp);
+  for (parm_idp = parm_listp; parm_idp != NULL; parm_idp = parm_idp->next) {
+  	parm_idp->defn.info.data.offset = parm_offset;
+	  parm_offset += parm_idp->defn.key == VALPARM_DEFN
+      ? parm_idp->typep->size
+      : sizeof(char *);
+  	if (parm_offset & 1)
+      ++parm_offset;   /* round up to even */
+  }
+  reverse_list(&parm_listp);
+
+
   if_token_get_else_error(RPAREN, MISSING_RPAREN);
   *countp = parm_count;
-  *total_sizep = parm_offset  - STACK_FRAME_HEADER_SIZE;
+  *total_sizep = parm_offset  - PARAMETERS_STACK_FRAME_OFFSET;
 
   return(parm_listp);
+}
+
+/*--------------------------------------------------------------*/
+/*  reverse_list        Reverse a list of symbol table nodes.   */
+/*--------------------------------------------------------------*/
+
+void reverse_list(SYMTAB_NODE_PTR * listpp) /* ptr to ptr to node list head */
+{
+  SYMTAB_NODE_PTR prevp = NULL;
+  SYMTAB_NODE_PTR thisp = *listpp;
+  SYMTAB_NODE_PTR nextp;
+
+  /*
+  --  Reverse the list in place.
+  */
+  while (thisp != NULL) {
+    nextp = thisp->next;
+    thisp->next = prevp;
+    prevp = thisp;
+    thisp = nextp;
+  }
+
+  /*
+  --  Point to the new head (former tail) of the list.
+  */
+  *listpp = prevp;
 }
 
 /*--------------------------------------------------------------*/
@@ -635,7 +646,42 @@ TYPE_STRUCT_PTR declared_routine_call(
   bool parm_check_flag     /* if TRUE check parms */
 )
 {
+  int old_level = level;                  /* level of caller */
+  int new_level = rtn_idp->level + 1;     /* level of callee */
+
   actual_parm_list(rtn_idp, parm_check_flag);
+
+  /*
+  --  Push the static link onto the stack.
+  */
+  if (new_level == old_level + 1) {
+    /*
+    --  Calling a routine nested within the caller:
+    --  Push pointer to caller's stack frame.
+    */
+    emit_1(PUSH, reg(BP));
+  } else if (new_level == old_level) {
+    /*
+    --  Calling another routine at the same level:
+    --  Push pointer to stack frame of common parent.
+    */
+    emit_1(PUSH, name_lit(STATIC_LINK));
+  } else  /* new_level < old_level */  {
+    /*
+    --  Calling a routine at a lesser level (nested less deeply):
+    --  Push pointer to stack frame of nearest common ancestor.
+    */
+    int lev;
+
+    emit_2(MOVE, reg(BX), reg(BP));
+    for (lev = old_level; lev >= new_level; --lev)
+	    emit_2(MOVE, reg(BP), name_lit(STATIC_LINK));
+    emit_1(PUSH, reg(BP));
+    emit_2(MOVE, reg(BP), reg(BX));
+  }
+
+  emit_1(CALL, tagged_name(rtn_idp));
+
   return(rtn_idp->defn.key == PROC_DEFN ? NULL : rtn_idp->typep);
 }
 
@@ -675,23 +721,50 @@ void actual_parm_list(
 	    get_token();
 
 	    /*
-	    --  Formal value parm:  Actual parm's type must be
-	    --                      assignment compatible with
-	    --                      formal parm's type.  Actual
-	    --                      parm can be an expression.
+	    --  Check the actual parm's type against the formal parm.
+	    --  An actual parm's type must be the same as the type of
+	    --  a formal VAR parm and assignment compatible with the
+	    --  type of a formal value parm.
 	    */
 	    if ((formal_parm_idp == NULL) || (formal_parm_defn == VALPARM_DEFN) || !parm_check_flag) {
 		    actual_parm_tp = expression();
 		    if (parm_check_flag && (formal_parm_idp != NULL) && (! is_assign_type_compatible(formal_parm_tp, actual_parm_tp)))
 		      error(INCOMPATIBLE_TYPES);
-	    }
 
-	    /*
-	    --  Formal VAR parm:  Actual parm's type must be the same
-	    --                    as formal parm type.  Actual parm
-	    --                    must be a variable.
-	    */
-	    else  { /* formal_parm_defn == VARPARM_DEFN */ 
+
+        /*
+        --  Push the argument value onto the stack.
+        */
+        if (formal_parm_tp == real_typep) {
+            /*
+            --  Real formal parm.
+            */
+            if (actual_parm_tp == integer_typep) {
+              emit_1(PUSH, reg(AX));
+              emit_1(CALL, name_lit(FLOAT_CONVERT));
+              emit_2(ADD,  reg(SP), integer_lit(2));
+            }
+          emit_1(PUSH, reg(DX));
+          emit_1(PUSH, reg(AX));
+    		} else if ((actual_parm_tp->form == ARRAY_FORM) || (actual_parm_tp->form == RECORD_FORM)) {
+            /*
+            --  Block move onto the stack.
+            */
+            int size = actual_parm_tp->size;
+            int offset = size%2 == 0 ? size : size + 1;
+
+            emit(CLEAR_DIRECTION);
+            emit_1(POP,  reg(SI));
+            emit_2(SUBTRACT, reg(SP), integer_lit(offset));
+            emit_2(MOVE, reg(DI), reg(SP));
+            emit_2(MOVE, reg(CX), integer_lit(size));
+            emit_2(MOVE, reg(AX), reg(DS));
+            emit_2(MOVE, reg(ES), reg(AX));
+            emit(MOVE_BLOCK);
+        } else {
+          emit_1(PUSH, reg(AX));
+        }
+      } else { /* formal_parm_defn == VARPARM_DEFN */ 
 		    if (token == IDENTIFIER) {
 		      SYMTAB_NODE_PTR idp;
 
@@ -701,10 +774,6 @@ void actual_parm_list(
 		      if (formal_parm_tp != actual_parm_tp)
 			      error(INCOMPATIBLE_TYPES);
 		    } else {
-          /*
-          --  Not a variable:  Parse an expression anyway
-          --                   for error recovery.
-          */
           actual_parm_tp = expression();
           error(INVALID_VAR_PARM);
         }
@@ -752,13 +821,20 @@ void block(SYMTAB_NODE_PTR rtn_idp) /* id of program or routine */
   declarations(rtn_idp);
 
   /*
+  --  Emit the prologue code for the main routine
+  --  or for a procedure or function.
+  */
+  if (rtn_idp->defn.key == PROG_DEFN)
+  	emit_main_prologue();
+  else
+	  emit_routine_prologue(rtn_idp);
+
+  /*
   --  Error synchronization:  Should be ;
   */
   synchronize(follow_decls_list, NULL, NULL);
   if (token != BEGIN)
     error(MISSING_BEGIN);
-
-  crunch_token();
 
   block_flag = true;
   compound_statement();
