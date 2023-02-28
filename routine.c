@@ -203,8 +203,8 @@ SYMTAB_NODE_PTR program_header(void)
 	    if (token == IDENTIFIER) {
   	  	search_and_enter_local_symtab(parm_idp);
 	    	parm_idp->defn.key = VARPARM_DEFN;
-		   parm_idp->typep = &dummy_type;
-		   get_token();
+		    parm_idp->typep = &dummy_type;
+		    get_token();
 
         /*
         --  Link program parm ids together.

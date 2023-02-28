@@ -27,6 +27,3 @@ PROGRAM simple (output);
 	writeln('In simple, the value of n is', n:3,
 		' and the value of x is', x:8:4);
     END {simple}.
-
-
-

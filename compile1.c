@@ -49,6 +49,8 @@ int main(int argc, char *argv[])
   /*
   --  Initialize the scanner.
   */
+  extern bool print_flag;
+  print_flag = false;
   init_scanner(argv[1]);
 
   /*
