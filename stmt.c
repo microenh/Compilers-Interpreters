@@ -50,7 +50,7 @@ void while_statement(void);
 void if_statement(void);
 void for_statement(void);
 void case_statement(void);
-void case_branch(TYPE_STRUCT_PTR expr_tp);
+void case_branch(TYPE_STRUCT_PTR expr_tp, int case_end_labelx);
 TYPE_STRUCT_PTR case_label(void);
 
 extern int              label_index;
@@ -88,17 +88,15 @@ void statement(void)
 	    break;
 	  }
 
+    case REPEAT:    repeat_statement();     break;
+    case WHILE:     while_statement();      break;
+    case IF:        if_statement();         break;
+    case FOR:       for_statement();        break;
+    case CASE:      case_statement();       break;
+
     case BEGIN:
       compound_statement();
       break;
-    case WHILE:
-    case REPEAT:
-    case IF:
-    case FOR:
-    case CASE: {
-	    error(UNIMPLEMENTED_FEATURE);
-	    exit(-UNIMPLEMENTED_FEATURE);
-  	}
 
 
     default:
@@ -205,6 +203,400 @@ void assignment_statement(SYMTAB_NODE_PTR var_idp)
   }
 }    
 
+/*--------------------------------------------------------------*/
+/*  repeat_statement    Process a REPEAT statement:             */
+/*                                                              */
+/*                          REPEAT <stmt-list> UNTIL <expr>     */
+/*--------------------------------------------------------------*/
+
+void repeat_statement(void)
+{
+  TYPE_STRUCT_PTR expr_tp;
+  int             loop_begin_labelx = new_label_index();
+  int             loop_exit_labelx  = new_label_index();
+
+  emit_label(STMT_LABEL_PREFIX, loop_begin_labelx);
+
+  /*
+  --  <stmt-list>
+  */
+  get_token();
+  do {
+  	statement();
+	  while (token == SEMICOLON)
+      get_token();
+  } while (token_in(statement_start_list));
+
+  if_token_get_else_error(UNTIL, MISSING_UNTIL);
+
+  expr_tp = expression();
+  if (expr_tp != boolean_typep)
+    error(INCOMPATIBLE_TYPES);
+
+  emit_2(COMPARE, reg(AX), integer_lit(1));
+  emit_1(JUMP_EQ, label(STMT_LABEL_PREFIX, loop_exit_labelx));
+  emit_1(JUMP, label(STMT_LABEL_PREFIX, loop_begin_labelx));
+  emit_label(STMT_LABEL_PREFIX, loop_exit_labelx);
+}
+
+/*--------------------------------------------------------------*/
+/*  while_statement     Process a WHILE statement:              */
+/*                                                              */
+/*                          WHILE <expr> DO <stmt>              */
+/*--------------------------------------------------------------*/
+
+void while_statement(void)
+{
+  TYPE_STRUCT_PTR expr_tp;
+  int             loop_test_labelx = new_label_index();
+  int             loop_stmt_labelx = new_label_index();
+  int             loop_exit_labelx = new_label_index();
+
+  emit_label(STMT_LABEL_PREFIX, loop_test_labelx);
+
+  get_token();
+  expr_tp = expression();
+  if (expr_tp != boolean_typep)
+    error(INCOMPATIBLE_TYPES);
+
+  emit_2(COMPARE, reg(AX), integer_lit(1));
+  emit_1(JUMP_EQ, label(STMT_LABEL_PREFIX, loop_stmt_labelx));
+  emit_1(JUMP,    label(STMT_LABEL_PREFIX, loop_exit_labelx));
+  emit_label(STMT_LABEL_PREFIX, loop_stmt_labelx);
+
+  if_token_get_else_error(DO, MISSING_DO);
+  statement();
+
+  emit_1(JUMP, label(STMT_LABEL_PREFIX, loop_test_labelx));
+  emit_label(STMT_LABEL_PREFIX, loop_exit_labelx);
+}
+
+/*--------------------------------------------------------------*/
+/*  if_statement        Process an IF statement:                */
+/*                                                              */
+/*                          IF <expr> THEN <stmt>               */
+/*                                                              */
+/*                      or:                                     */
+/*                                                              */
+/*                          IF <expr> THEN <stmt> ELSE <stmt>   */
+/*--------------------------------------------------------------*/
+
+void if_statement(void)
+{
+  TYPE_STRUCT_PTR expr_tp;
+  int             true_labelx  = new_label_index();
+  int             false_labelx = new_label_index();
+  int             if_end_labelx;
+
+  get_token();
+  expr_tp = expression();
+  if (expr_tp != boolean_typep)
+    error(INCOMPATIBLE_TYPES);
+
+  emit_2(COMPARE, reg(AX), integer_lit(1));
+  emit_1(JUMP_EQ, label(STMT_LABEL_PREFIX, true_labelx));
+  emit_1(JUMP,    label(STMT_LABEL_PREFIX, false_labelx));
+  emit_label(STMT_LABEL_PREFIX, true_labelx);
+
+  if_token_get_else_error(THEN, MISSING_THEN);
+  statement();
+
+  /*
+  --  ELSE branch?
+  */
+  if (token == ELSE) {
+	  if_end_labelx = new_label_index();
+	  emit_1(JUMP, label(STMT_LABEL_PREFIX, if_end_labelx));
+	  emit_label(STMT_LABEL_PREFIX, false_labelx);
+
+	  get_token();
+	  statement();
+
+	  emit_label(STMT_LABEL_PREFIX, if_end_labelx);
+  }
+  else
+    emit_label(STMT_LABEL_PREFIX, false_labelx);
+}
+
+/*--------------------------------------------------------------*/
+/*  for_statement       Process a FOR statement:                */
+/*                                                              */
+/*                          FOR <id> := <expr> TO|DOWNTO <expr> */
+/*                              DO <stmt>                       */
+/*--------------------------------------------------------------*/
+
+void for_statement(void)
+{
+  SYMTAB_NODE_PTR for_idp;
+  TYPE_STRUCT_PTR for_tp, expr_tp;
+  bool            to_flag;
+  int             loop_test_labelx = new_label_index();
+  int             loop_stmt_labelx = new_label_index();
+  int             loop_exit_labelx = new_label_index();
+
+  get_token();
+  if (token == IDENTIFIER) {
+  	search_and_find_all_symtab(for_idp);
+	  if ((for_idp->level != level) || (for_idp->defn.key != VAR_DEFN))
+	    error(INVALID_FOR_CONTROL);
+
+	  for_tp = base_type(for_idp->typep);
+	  get_token();
+
+  	if ((for_tp != integer_typep) && (for_tp != char_typep) && (for_tp->form != ENUM_FORM))
+      error(INCOMPATIBLE_TYPES);
+  } else {
+	  error(MISSING_IDENTIFIER);
+	  for_tp = &dummy_type;
+  }
+
+  if_token_get_else_error(COLONEQUAL, MISSING_COLONEQUAL);
+
+  expr_tp = expression();
+  if (! is_assign_type_compatible(for_tp, expr_tp))
+  	error(INCOMPATIBLE_TYPES);
+
+  if (for_tp == char_typep)
+    emit_2(MOVE, byte(for_idp), reg(AL))
+  else
+    emit_2(MOVE, word(for_idp), reg(AX))
+
+  if ((token == TO) || (token == DOWNTO)) {
+	  to_flag = (token == TO);
+  	get_token();
+  } else
+    error(MISSING_TO_OR_DOWNTO);
+
+  emit_label(STMT_LABEL_PREFIX, loop_test_labelx);
+
+  expr_tp = expression();
+  if (! is_assign_type_compatible(for_tp, expr_tp))
+  	error(INCOMPATIBLE_TYPES);
+
+  if (for_tp == char_typep)
+    emit_2(COMPARE, byte(for_idp), reg(AL))
+  else
+    emit_2(COMPARE, word(for_idp), reg(AX))
+  emit_1(to_flag ? JUMP_LE : JUMP_GE,
+    label(STMT_LABEL_PREFIX, loop_stmt_labelx));
+  emit_1(JUMP, label(STMT_LABEL_PREFIX, loop_exit_labelx));
+  emit_label(STMT_LABEL_PREFIX, loop_stmt_labelx);
+
+  if_token_get_else_error(DO, MISSING_DO);
+  statement();
+
+  emit_1(to_flag ? INCREMENT : DECREMENT,
+    for_tp == char_typep ? byte(for_idp) : word(for_idp));
+  emit_1(JUMP, label(STMT_LABEL_PREFIX, loop_test_labelx));
+
+  emit_label(STMT_LABEL_PREFIX, loop_exit_labelx);
+  emit_1(to_flag ?  DECREMENT : INCREMENT,
+  for_tp == char_typep ? byte(for_idp) : word(for_idp));
+}
+
+/*--------------------------------------------------------------*/
+/*  case_statement      Process a CASE statement:               */
+/*                                                              */
+/*                          CASE <expr> OF                      */
+/*                              <case-branch> ;                 */
+/*                              ...                             */
+/*                          END                                 */
+/*--------------------------------------------------------------*/
+
+TOKEN_CODE follow_expr_list[]      = {OF, SEMICOLON, 0};
+
+TOKEN_CODE case_label_start_list[] = {IDENTIFIER, NUMBER, PLUS,
+				      MINUS, STRING, 0};
+
+void case_statement(void)
+{
+  bool another_branch;
+  int  case_end_labelx = new_label_index();
+  TYPE_STRUCT_PTR expr_tp;
+
+  get_token();
+  expr_tp = expression();
+
+  if (((expr_tp->form != SCALAR_FORM) && (expr_tp->form != ENUM_FORM) && (expr_tp->form != SUBRANGE_FORM))
+    || (expr_tp == real_typep))
+    error(INCOMPATIBLE_TYPES);
+
+  /*
+  --  Error synchronization:  Should be OF
+  */
+  synchronize(follow_expr_list, case_label_start_list, NULL);
+  if_token_get_else_error(OF, MISSING_OF);
+
+  /*
+  --  Loop to process CASE branches.
+  */
+  another_branch = token_in(case_label_start_list);
+  while (another_branch) {
+	  if (token_in(case_label_start_list))
+	    case_branch(expr_tp, case_end_labelx);
+
+	  if (token == SEMICOLON) {
+	    get_token();
+	    another_branch = true;
+	  } else if (token_in(case_label_start_list)) {
+	    error(MISSING_SEMICOLON);
+	    another_branch = true;
+	  } else 
+    another_branch = false;
+  }
+
+  if_token_get_else_error(END, MISSING_END);
+  emit_label(STMT_LABEL_PREFIX, case_end_labelx);
+}
+
+/*--------------------------------------------------------------*/
+/*  case_branch             Process a CASE branch:              */
+/*                                                              */
+/*                              <case-label-list> : <stmt>      */
+/*--------------------------------------------------------------*/
+
+TOKEN_CODE follow_case_label_list[] = {COLON, SEMICOLON, 0};
+
+void case_branch(
+  TYPE_STRUCT_PTR expr_tp,            /* type of CASE expression */
+  int             case_end_labelx     /* CASE end label index */
+)
+{
+  bool            another_label;
+  int             next_test_labelx;
+  int             branch_stmt_labelx = new_label_index();
+  TYPE_STRUCT_PTR label_tp;
+  TYPE_STRUCT_PTR case_label();
+
+  /*
+  --  <case-label-list>
+  */
+  do {
+  	next_test_labelx = new_label_index();
+
+	  label_tp = case_label();
+	  if (expr_tp != label_tp)
+      error(INCOMPATIBLE_TYPES);
+
+	  emit_1(JUMP_NE, label(STMT_LABEL_PREFIX, next_test_labelx));
+
+	  get_token();
+	  if (token == COMMA) {
+	    get_token();
+	    emit_1(JUMP, label(STMT_LABEL_PREFIX, branch_stmt_labelx));
+
+	    if (token_in(case_label_start_list)) {
+		    emit_label(STMT_LABEL_PREFIX, next_test_labelx);
+		    another_label = true;
+	    } else {
+		    error(MISSING_CONSTANT);
+		    another_label = false;
+	    }
+	  } else
+      another_label = false;
+  } while (another_label);
+
+  /*
+  --  Error synchronization:  Should be :
+  */
+  synchronize(follow_case_label_list, statement_start_list, NULL);
+  if_token_get_else_error(COLON, MISSING_COLON);
+
+  emit_label(STMT_LABEL_PREFIX, branch_stmt_labelx);
+  statement();
+
+  emit_1(JUMP, label(STMT_LABEL_PREFIX, case_end_labelx));
+  emit_label(STMT_LABEL_PREFIX, next_test_labelx);
+}
+
+/*--------------------------------------------------------------*/
+/*  case_label              Process a CASE label and return a   */
+/*                          pointer to its type structure.      */
+/*--------------------------------------------------------------*/
+
+TYPE_STRUCT_PTR case_label(void)
+{
+  TOKEN_CODE sign     = PLUS;    	/* unary + or - sign */
+  bool       saw_sign = false;   	/* TRUE iff unary sign */
+
+  /*
+  --  Unary + or - sign.
+  */
+  if ((token == PLUS) || (token == MINUS)) {
+	  sign     = token;
+	  saw_sign = false;
+	  get_token();
+  }
+
+  /*
+  --  Numeric constant:  Integer type only.
+  */
+  if (token == NUMBER) {
+  	if (literal.type == INTEGER_LIT)
+	    emit_2(COMPARE, reg(AX),
+      integer_lit(sign == PLUS
+        ?  literal.value.integer
+        : -literal.value.integer))
+	  else
+      error(INVALID_CONSTANT);
+
+	  return(integer_typep);
+  }
+
+  /*
+  --  Identifier constant:  Integer, character, or enumeration
+  --                        types only.
+  */
+  else if (token == IDENTIFIER) {
+    SYMTAB_NODE_PTR idp;
+
+    search_all_symtab(idp);
+
+    if (idp == NULL) {
+      error(UNDEFINED_IDENTIFIER);
+      return(&dummy_type);
+    } else if (idp->defn.key != CONST_DEFN) {
+      error(NOT_A_CONSTANT_IDENTIFIER);
+      return(&dummy_type);
+    } else if (idp->typep == integer_typep) {
+	    emit_2(COMPARE, reg(AX),
+		    integer_lit(sign == PLUS
+          ?  idp->defn.info.constant.value.integer
+          : -idp->defn.info.constant.value.integer));
+	    return(integer_typep);
+	  } else if (idp->typep == char_typep) {
+	    if (saw_sign)
+        error(INVALID_CONSTANT);
+      emit_2(COMPARE, reg(AL), char_lit(idp->defn.info.constant.value.character));
+	    return(char_typep);
+  	} else if (idp->typep->form == ENUM_FORM) {
+	    if (saw_sign)
+        error(INVALID_CONSTANT);
+	    emit_2(COMPARE, reg(AX), integer_lit(idp->defn.info.constant.value.integer));
+	    return(idp->typep);
+	  } else
+      return(&dummy_type);
+  }
+
+  /*
+  --  String constant:  Character type only.
+  */
+  else if (token == STRING) {
+	  if (saw_sign)
+      error(INVALID_CONSTANT);
+
+    if (strlen(literal.value.string) == 1) {
+      emit_2(COMPARE, reg(AL), char_lit(literal.value.string[0]));
+      return(char_typep);
+    } else {
+	    error(INVALID_CONSTANT);
+	    return(&dummy_type);
+	  }
+  } else {
+	  error(INVALID_CONSTANT);
+	  return(&dummy_type);
+  }
+}
 
 
 

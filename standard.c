@@ -59,13 +59,13 @@ TYPE_STRUCT_PTR eof_eoln(), abs_sqr(),
 void read_readln(SYMTAB_NODE_PTR rtn_idp); 
 void write_writeln(SYMTAB_NODE_PTR rtn_idp);
 TYPE_STRUCT_PTR eof_eoln(SYMTAB_NODE_PTR rtn_idp);
-TYPE_STRUCT_PTR abs_sqr(void);
-TYPE_STRUCT_PTR arctan_cos_exp_ln_sin_sqrt(void);
-TYPE_STRUCT_PTR pred_succ(void);
+TYPE_STRUCT_PTR abs_sqr(SYMTAB_NODE_PTR rtn_idp);
+TYPE_STRUCT_PTR arctan_cos_exp_ln_sin_sqrt(SYMTAB_NODE_PTR rtn_idp);
+TYPE_STRUCT_PTR pred_succ(SYMTAB_NODE_PTR rtn_idp);
 TYPE_STRUCT_PTR chr(void);
 TYPE_STRUCT_PTR odd(void);
 TYPE_STRUCT_PTR ord(void);
-TYPE_STRUCT_PTR round_trunc(void);
+TYPE_STRUCT_PTR round_trunc(SYMTAB_NODE_PTR rtn_idp);
 
 /*--------------------------------------------------------------*/
 /*  standard_routine_call   Process a call to a standard        */
@@ -77,15 +77,117 @@ TYPE_STRUCT_PTR round_trunc(void);
 TYPE_STRUCT_PTR standard_routine_call(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 {
   switch (rtn_idp->defn.info.routine.key) {
+  	case READ:
+	  case READLN:
+      read_readln(rtn_idp);
+      return(NULL);
+
     case WRITE:
     case WRITELN:
       write_writeln(rtn_idp);
       return(NULL);
 
+    case EOFF:
+    case EOLN:
+      return(eof_eoln(rtn_idp));
+
+    case ABS:
+    case SQR:
+      return(abs_sqr(rtn_idp));
+
+    case ARCTAN:
+    case COS:
+    case EXP:
+    case LN:
+    case SIN:
+    case SQRT:
+      return(arctan_cos_exp_ln_sin_sqrt(rtn_idp));
+
+    case PRED:
+    case SUCC:
+      return(pred_succ(rtn_idp));
+
+    case CHR:
+      return(chr());
+
+    case ODD:
+      return(odd());
+
+    case ORD:
+      return(ord());
+
+    case ROUND:
+    case TRUNC:
+      return(round_trunc(rtn_idp));
+
     default:
 	    error(UNIMPLEMENTED_FEATURE);
 	    exit(-UNIMPLEMENTED_FEATURE);
   }
+}
+
+/*--------------------------------------------------------------*/
+/*  read_readln             Process a call to read or readln.   */
+/*--------------------------------------------------------------*/
+
+void read_readln(SYMTAB_NODE_PTR rtn_idp) /* routine id */
+{
+  TYPE_STRUCT_PTR actual_parm_tp;     /* actual parm type */
+
+  /*
+  --  Parameters are optional for readln.
+  */
+  if (token == LPAREN) {
+    /*
+    --  <id-list>
+    */
+    do {
+	    get_token();
+
+	    /*
+	    --  Actual parms must be variables (but parse
+	    --  an expression anyway for error recovery).
+	    */
+	    if (token == IDENTIFIER) {
+    		SYMTAB_NODE_PTR idp;
+
+        search_and_find_all_symtab(idp);
+        actual_parm_tp = base_type(variable(idp, VARPARM_USE));
+
+    		if (actual_parm_tp->form != SCALAR_FORM)
+		      error(INCOMPATIBLE_TYPES);
+		    else if (actual_parm_tp == integer_typep) {
+          emit_1(CALL, name_lit(READ_INTEGER));
+          emit_1(POP,  reg(BX));
+          emit_2(MOVE, word_indirect(BX), reg(AX));
+    		} else if (actual_parm_tp == real_typep) {
+          emit_1(CALL, name_lit(READ_REAL));
+          emit_1(POP,  reg(BX));
+          emit_2(MOVE, word_indirect(BX), reg(AX));
+          emit_2(MOVE, high_dword_indirect(BX), reg(DX));
+    		} else if (actual_parm_tp == char_typep) {
+          emit_1(CALL, name_lit(READ_CHAR));
+          emit_1(POP,  reg(BX));
+          emit_2(MOVE, byte_indirect(BX), reg(AL));
+    		}
+      } else {
+        actual_parm_tp = expression();
+        error(INVALID_VAR_PARM);
+      }
+
+      /*
+      --  Error synchronization:  Should be , or )
+      */
+      synchronize(follow_parm_list, statement_end_list, NULL);
+
+    } while (token == COMMA);
+
+  	if_token_get_else_error(RPAREN, MISSING_RPAREN);
+  } else if (rtn_idp->defn.info.routine.key == READ)
+	  error(WRONG_NUMBER_OF_PARMS);
+
+  if (rtn_idp->defn.info.routine.key == READLN)
+  	emit_1(CALL, name_lit(READ_LINE));
 }
 
 
@@ -221,6 +323,10 @@ TYPE_STRUCT_PTR eof_eoln(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 	  actual_parm_list(rtn_idp, false);
   }
 
+  emit_1(CALL, name_lit(rtn_idp->defn.info.routine.key == EOFF
+    ? STD_END_OF_FILE
+    : STD_END_OF_LINE));
+
   return(boolean_typep);
 }
 
@@ -230,7 +336,7 @@ TYPE_STRUCT_PTR eof_eoln(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 /*                          real parm    => real result         */
 /*--------------------------------------------------------------*/
 
-TYPE_STRUCT_PTR abs_sqr(void)
+TYPE_STRUCT_PTR abs_sqr(SYMTAB_NODE_PTR rtn_idp)  /* routine id */
 {
   TYPE_STRUCT_PTR parm_tp;            /* actual parameter type */
   TYPE_STRUCT_PTR result_tp;          /* result type */
@@ -249,6 +355,37 @@ TYPE_STRUCT_PTR abs_sqr(void)
   } else
     error(WRONG_NUMBER_OF_PARMS);
 
+  switch (rtn_idp->defn.info.routine.key) {
+
+  	case ABS:
+	    if (parm_tp == integer_typep) {
+		    int nonnegative_labelx = new_label_index();
+
+      emit_2(COMPARE, reg(AX), integer_lit(0));
+      emit_1(JUMP_GE, label(STMT_LABEL_PREFIX,
+                nonnegative_labelx));
+      emit_1(NEGATE, reg(AX));
+      emit_label(STMT_LABEL_PREFIX, nonnegative_labelx);
+	    } else {
+        emit_push_operand(parm_tp);
+        emit_1(CALL, name_lit(STD_ABS));
+        emit_2(ADD, reg(SP), integer_lit(4));
+	    }
+	    break;
+
+	case SQR:
+    if (parm_tp == integer_typep) {
+      emit_2(MOVE, reg(DX), reg(AX));
+      emit_1(MULTIPLY, reg(DX));
+    } else {
+      emit_push_operand(parm_tp);
+      emit_push_operand(parm_tp);
+      emit_1(CALL, name_lit(FLOAT_MULTIPLY));
+      emit_2(ADD, reg(SP), integer_lit(8));
+    }
+    break;
+	}
+
   return(result_tp);
 }
 
@@ -259,20 +396,41 @@ TYPE_STRUCT_PTR abs_sqr(void)
 /*                              real_parm    => real result     */
 /*--------------------------------------------------------------*/
 
-TYPE_STRUCT_PTR arctan_cos_exp_ln_sin_sqrt(void)
+TYPE_STRUCT_PTR arctan_cos_exp_ln_sin_sqrt(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 {
   TYPE_STRUCT_PTR parm_tp;            /* actual parameter type */
+  char            *std_func_name;     /* name of standard func */
 
   if (token == LPAREN) {
-  	get_token();
+	  get_token();
 	  parm_tp = base_type(expression());
 
-  	if ((parm_tp != integer_typep) && (parm_tp != real_typep))
+	  if ((parm_tp != integer_typep) && (parm_tp != real_typep))
 	    error(INCOMPATIBLE_TYPES);
 
 	  if_token_get_else_error(RPAREN, MISSING_RPAREN);
   } else
     error(WRONG_NUMBER_OF_PARMS);
+
+  if (parm_tp == integer_typep) {
+    emit_1(PUSH, reg(AX));
+    emit_1(CALL, name_lit(FLOAT_CONVERT));
+    emit_2(ADD,  reg(SP), integer_lit(2));
+  }
+
+  emit_push_operand(real_typep);
+
+  switch (rtn_idp->defn.info.routine.key) {
+    case ARCTAN:    std_func_name = STD_ARCTAN;     break;
+    case COS:       std_func_name = STD_COS;        break;
+    case EXP:       std_func_name = STD_EXP;        break;
+    case LN:        std_func_name = STD_LN;         break;
+    case SIN:       std_func_name = STD_SIN;        break;
+    case SQRT:      std_func_name = STD_SQRT;       break;
+  }
+
+  emit_1(CALL, name_lit(std_func_name));
+  emit_2(ADD,  reg(SP), integer_lit(4));
 
   return(real_typep);
 }
@@ -283,7 +441,7 @@ TYPE_STRUCT_PTR arctan_cos_exp_ln_sin_sqrt(void)
 /*                          enum parm    => enum result         */
 /*--------------------------------------------------------------*/
 
-TYPE_STRUCT_PTR pred_succ(void)
+TYPE_STRUCT_PTR pred_succ(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 {
   TYPE_STRUCT_PTR parm_tp;            /* actual parameter type */
   TYPE_STRUCT_PTR result_tp;          /* result type */
@@ -292,14 +450,21 @@ TYPE_STRUCT_PTR pred_succ(void)
   	get_token();
 	  parm_tp = base_type(expression());
 
-    if ((parm_tp != integer_typep) && (parm_tp->form != ENUM_FORM)) {
+    if ((parm_tp != integer_typep) &&
+      (parm_tp->form != ENUM_FORM)) {
       error(INCOMPATIBLE_TYPES);
       result_tp = integer_typep;
-    } else result_tp = parm_tp;
+    } else
+      result_tp = parm_tp;
 
-    if_token_get_else_error(RPAREN, MISSING_RPAREN);
-  } else
+	  if_token_get_else_error(RPAREN, MISSING_RPAREN);
+  }  else
     error(WRONG_NUMBER_OF_PARMS);
+
+  emit_1(rtn_idp->defn.info.routine.key == PRED
+    ? DECREMENT
+    : INCREMENT,
+	   reg(AX));
 
   return(result_tp);
 }
@@ -314,7 +479,7 @@ TYPE_STRUCT_PTR chr(void)
   TYPE_STRUCT_PTR parm_tp;            /* actual parameter type */
 
   if (token == LPAREN) {
-	  get_token();
+  	get_token();
 	  parm_tp = base_type(expression());
 
 	  if (parm_tp != integer_typep)
@@ -345,6 +510,7 @@ TYPE_STRUCT_PTR odd(void)
   } else
     error(WRONG_NUMBER_OF_PARMS);
 
+  emit_2(AND_BITS, reg(AX), integer_lit(1));
   return(boolean_typep);
 }
 
@@ -361,7 +527,8 @@ TYPE_STRUCT_PTR ord(void)
   	get_token();
 	  parm_tp = base_type(expression());
 
-	  if ((parm_tp->form != ENUM_FORM) && (parm_tp != char_typep))  /* 2/9/91 */
+	  if ((parm_tp->form != ENUM_FORM) &&             /* 2/9/91 */
+	    (parm_tp != char_typep))
 	    error(INCOMPATIBLE_TYPES);
 	  if_token_get_else_error(RPAREN, MISSING_RPAREN);
   } else
@@ -375,7 +542,7 @@ TYPE_STRUCT_PTR ord(void)
 /*                          real parm => integer result         */
 /*--------------------------------------------------------------*/
 
-TYPE_STRUCT_PTR round_trunc(void)
+TYPE_STRUCT_PTR round_trunc(SYMTAB_NODE_PTR rtn_idp) /* routine id */
 {
   TYPE_STRUCT_PTR parm_tp;            /* actual parameter type */
 
@@ -388,6 +555,11 @@ TYPE_STRUCT_PTR round_trunc(void)
 	  if_token_get_else_error(RPAREN, MISSING_RPAREN);
   } else
     error(WRONG_NUMBER_OF_PARMS);
+
+  emit_push_operand(parm_tp);
+  emit_1(CALL, name_lit(rtn_idp->defn.info.routine.key == ROUND
+          ? STD_ROUND : STD_TRUNC));
+  emit_2(ADD, reg(SP), integer_lit(4));
 
   return(integer_typep);
 }

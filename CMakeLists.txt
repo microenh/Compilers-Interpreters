@@ -180,3 +180,17 @@ add_executable(compile1
   emitcode.c 
   error.c 
 )
+
+add_executable(compile2
+  compile2.c 
+  routine.c
+  standard.c 
+  stmt.c 
+  expr.c
+  decl.c
+  scanner.c
+  symtab.c 
+  emitasm.c 
+  emitcode.c 
+  error.c 
+)
